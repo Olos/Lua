@@ -3,10 +3,15 @@ function event_addon_command(...)
 	broken_init = split(term, ' ')
 	qual = table.remove(broken_init,1)
 	player = get_player()
-	if qual:lower()==player["name"]:lower() then
-		if broken ~= nil then
+	if qual:lower()==player['name']:lower() then
+		if broken_init ~= nil then
 			relevant_msg(table.concat(broken_init,' '))
 		end
+	elseif qual:lower()=='@all' or qual:lower()=='@'..player['main_job']:lower() then
+		if broken_init ~= nil then
+			relevant_msg(table.concat(broken_init,' '))
+		end
+		send_ipc_message(term)
 	else
 		send_ipc_message(term)
 	end
