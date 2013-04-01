@@ -36,15 +36,31 @@ function table.isarray(t)
 	return count == #t
 end
 
--- Returns the last element of an array.
-function table.last(t, offset)
-	if t == nil then
-		return nil
+-- Returns the number of elements in a table.
+function table.length(t)
+	if t:isarray() then
+		return #t
 	end
 	
-	offset = offset or 1
-	offset = offset - 1
-	return t[#t-offset]
+	local count = 0
+	for _, _ in pairs(t) do
+		count = count + 1
+	end
+	
+	return count
+end
+
+-- Returns the first element of an array, or the element at position n, if provided.
+function table.first(t, n)
+	n = n or 1
+	return t[n]
+end
+
+-- Returns the last element of an array, or the element at position length-n, if provided.
+function table.last(t, n)
+	n = n or 1
+	n = n - 1
+	return t[#t-n]
 end
 
 -- Returns true if searchval is in t.
@@ -79,6 +95,26 @@ function table.extend(t, t_extend)
 	end
 	
 	return t
+end
+
+-- Returns the number of element in the table that satisfy fn. If fn is not a function, counts the number of occurrences of fn.
+function table.count(t, fn)
+	if type(fn) ~= 'function' then
+		if type(fn) == nil then
+			fn = boolean.exists
+		else
+			fn = functools.equals(fn)
+		end
+	end
+	
+	count = 0
+	for _, val in pairs(t) do
+		if fn(val) == true then
+			count = count + 1
+		end
+	end
+	
+	return count
 end
 
 -- Removes all elements from a table.
@@ -294,11 +330,11 @@ function table.set(t)
 end
 
 -- Backs up old table sorting function.
-table.in_place_sort = table.sort
+table._bak_sort = table.sort
 
 -- Returns a sorted table.
 function table.sort(t, ...)
-	T(t):in_place_sort(...)
+	T(t):_bak_sort(...)
 	return t
 end
 
@@ -349,19 +385,43 @@ function table.copy(t)
 	return setmetatable(res, getmetatable(t))
 end
 
+-- Returns an array containing values from start to finish. If no finish is specified, returns table.range(1, start)
+function table.range(start, finish, step)
+	if finish == nil then
+		start, finish = 1, start
+	end
+	
+	step = step or 1
+	
+	local res = T{}
+	for key = start, finish, step do
+		res:append(key)
+	end
+	
+	return res
+end
+
+-- Backs up old table concat function.
+table._bak_concat = table.concat
+
+-- Concatenates all objects of a table. Converts to string, if not already so.
+function table.concat(t, str)
+	return T(t):map(tostring):_bak_concat(str)
+end
+
 -- Concatenates all elements with a whitespace in between.
 function table.sconcat(t)
-	return table.concat(t, ' ')
+	return T(t):concat(' ')
 end
 
 -- Sum up all elements of a table.
 function table.sum(t)
-	return table.reduce(t, math.sum, 0)
+	return T(t):reduce(math.sum, 0)
 end
 
 -- Multiply all elements of a table.
 function table.mult(t)
-	return table.reduce(t, math.mult, 1)
+	return T(t):reduce(math.mult, 1)
 end
 
 -- Check if table is empty.
