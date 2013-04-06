@@ -5,6 +5,8 @@ require 'stringhelper'
 require 'mathhelper'
 require 'logger'
 
+require 'actionhelper'
+
 local config = require 'config'
 
 -----------------------------
@@ -13,8 +15,6 @@ local settings = nil -- holds a config instance
 local settings_file = 'data/settings.xml'
 
 local player_display_count = 8 -- num of players to display. configured via settings file
-local dps_autostart = true -- configured via settings file
-local dps_autostop = true -- configured via settings file
 
 local dps_db = T{}
 local mob_filter = T{} -- subset of mobs that we're currently displaying damage for
@@ -23,7 +23,6 @@ local mob_filter = T{} -- subset of mobs that we're currently displaying damage 
 local dps_active = false
 local dps_clock = 1 -- avoid div/0
 local dps_clock_prev_time = 0
-local dps_auto_stop_time = 0
 
 local default_settings_file = [[
 <?xml version="1.0" ?>
@@ -37,17 +36,12 @@ local default_settings_file = [[
 		posY - y coordinate for position
 		numPlayers - The maximum number of players to display damage for
 		bgTransparency - Transparency level for the background. 0-255 range
-		dpsAutostart - Starts DPS clock whenever you or an alli member deals damage
-		dpsAutostop - Stops the DPS clock whenever an enemy is defeated.
-		              Note that if you die, you'll have to stop the clock manually.
 	-->
 	<global>
 		<posX>10</posX>
 		<posY>250</posY>
 		<bgTransparency>200</bgTransparency>
 		<numPlayers>8</numPlayers>
-		<dpsAutostart>true</dpsAutostart>
-		<dpsAutostop>true</dpsAutostop>
 	</global>
 
 	<!--
@@ -55,6 +49,7 @@ local default_settings_file = [[
 	-->
 </settings>
 ]]
+
 
 -- Handle addon args
 function event_addon_command(...)
@@ -73,8 +68,6 @@ function event_addon_command(...)
 			write('sb filters  : Shows current filter settings')
 			write('sb add <mob1> <mob2> ... : Add mob patterns to the filter (substrings ok)')
 			write('sb clear : Clears mob filter')
-			write('sb start : Starts dps clock. Automaticly starts if autostart is on')
-			write('sb stop: Stops dps clock')
 		elseif params[1]:lower() == "pos" then
 			if params[3] then
 				tb_set_location('scoreboard', params[2], params[3])
@@ -82,7 +75,23 @@ function event_addon_command(...)
 		elseif params[1]:lower() == "reset" then
 			initialize()
 		elseif params[1]:lower() == "report" then
-			report_summary()
+			local arg = params[2]
+			local arg2 = params[3]
+			
+			if arg then
+				if T{'s', 'l', 'p', 't'}:contains(arg) then
+					if arg2 and not arg2:match('^[a-zA-Z]+$') then
+						-- should be a valid player name
+						error('Invalid argument for report t: ' .. arg2)
+						return
+					end
+				else
+					error('Invalid parameter passed to report: ' .. arg)
+					return
+				end
+			end
+			
+			report_summary(arg, arg2)
 		elseif params[1]:lower() == "filters" then
 			local mob_str
 			if mob_filter:isempty() then
@@ -99,15 +108,6 @@ function event_addon_command(...)
 		elseif params[1]:lower() == "clear" then
 			mob_filter = T{}
 			update_scoreboard()
-		elseif params[1]:lower() == "start" then
-			dps_active = true
-			dps_clock_prev_time = 0
-			update_scoreboard()
-			add_to_chat(55, "Scoreboard: Started DPS clock.")
-		elseif params[1]:lower() == "stop" then
-			dps_active = false
-			add_to_chat(55, "Scoreboard: Stopped DPS clock.")
-			update_scoreboard()
 		end
 	end
 end
@@ -115,11 +115,9 @@ end
 
 -- Resets all data tracking variables
 function initialize()
-
 	dps_db = T{}
 
 	dps_active = false
-	dps_autostart = true
 	dps_clock = 1
 	dps_clock_prev_timestamp = 0
 	
@@ -130,23 +128,38 @@ function initialize()
 							   string.rep(' ', 17))
 end
 
+
 function update_dps_clock()
-	local now = os.time()
-	if dps_clock_prev_time == 0 then
+	if get_player()['in_combat'] then
+		local now = os.time()
+
+		if dps_clock_prev_time == 0 then
+			dps_clock_prev_time = now
+		end
+
+		dps_clock = dps_clock + (now - dps_clock_prev_time)
 		dps_clock_prev_time = now
+
+		dps_active = true
+	else
+		dps_active = false
+		dps_clock_prev_time = 0
 	end
-		
-	dps_clock = dps_clock + (now - dps_clock_prev_time)
-	dps_clock_prev_time = now
 end
 
 
 -- Secondary update driver to keep the DPS moving between swings and keep the clock moving.
 function event_time_change(...)
-	-- Simply add time to the clock while dps processing is active.
-	if dps_active then
-		update_dps_clock()
+	update_dps_clock()
+	
+	if not dps_db:isempty() then
+		update_scoreboard()
 	end
+end
+
+
+function event_status_change(old, new)
+	update_dps_clock()
 	
 	if not dps_db:isempty() then
 		update_scoreboard()
@@ -176,8 +189,6 @@ function event_load()
 	settings = config.load()
 
 	player_display_count = settings['numplayers'] or player_display_count
-	dps_autostart = settings['autostartdps'] or dps_autostart
-	dps_autostop = settings['autostopdps'] or dps_autostop
 	
 	send_command('alias sb lua c scoreboard')
 	
@@ -197,107 +208,93 @@ function event_load()
 end
 
 
+function actor_is_party_member(action)
+	local party = get_active_party()
+	if party[action:get_actor_name()] then
+		return true
+	else
+		return false
+	end
+end
+
+
+function event_action(raw_action)
+	local action = Action(raw_action)
+	local category = action:get_category_string()
+	
+	if not actor_is_party_member(action) and category == 'melee' then
+		for target in action:get_targets() do
+			for subaction in target:get_actions() do
+				if subaction.has_spike_effect then
+					accumulate(action:get_actor_name(), target:get_name(), subaction.spike_effect_param)
+				end
+			end
+		end
+	elseif category == 'melee' then
+		for target in action:get_targets() do
+			for subaction in target:get_actions() do
+				-- hit, crit
+				if subaction.message == 1 or subaction.message == 67 then
+					accumulate(target:get_name(), action:get_actor_name(), subaction.param)
+					if subaction.has_add_effect and T{163, 229}:contains(subaction.add_effect_message) then
+						accumulate(target:get_name(), action:get_actor_name(), subaction.add_effect_param)
+					end
+				end
+			end
+		end
+	elseif category == 'weaponskill_finish' then
+		for target in action:get_targets() do
+			for subaction in target:get_actions() do
+				accumulate(target:get_name(), action:get_actor_name(), subaction.param)
+
+				-- skillchains
+				if subaction.has_add_effect then
+					accumulate(target:get_name(), action:get_actor_name(), subaction.add_effect_param)
+				end
+			end
+		end
+	elseif category == 'spell_finish' then
+		for target in action:get_targets() do
+			for subaction in target:get_actions() do
+				if subaction.message == 2 then
+					accumulate(target:get_name(), action:get_actor_name(), subaction.param)
+				end
+			end
+		end
+	elseif category == 'ranged_finish' then
+		for target in action:get_targets() do
+			for subaction in target:get_actions() do
+				-- ranged, crit, squarely, truestrike
+				if T{352, 353, 576, 577}:contains(subaction.message) then
+					accumulate(target:get_name(), action:get_actor_name(), subaction.param)
+					
+					-- holy bolts etc
+					if subaction.has_add_effect and T{163, 229}:contains(subaction.add_effect_message) then
+						accumulate(target:get_name(), action:get_actor_name(), subaction.add_effect_param)
+					end
+				end
+			end
+		end
+	elseif category == 'job_ability' or category == 'job_ability_unblinkable' then
+		for target in action:get_targets() do
+			for subaction in target:get_actions() do
+				-- sange(77), generic damage ja(110), barrage(157), other generic dmg ja (317), stun ja (522)
+				if T{77, 110, 157, 317, 522}:contains(subaction.message) then
+					accumulate(target:get_name(), action:get_actor_name(), subaction.param)
+				end
+			end
+		end
+	end
+	
+	update_scoreboard()
+	update_dps_clock()
+end
+
+
 function event_unload()
 	send_command('unalias sb')
 	tb_delete('scoreboard')
 end
-
-
--- Parse lines based on patterns.
--- Returns true if we accumulated damage, false otherwise
-function parse_line(line)
-    local start, stop, player, mob, damage
-
-	-- Get medicines out of the way first
-    if string.find(line, '^(%w+) uses a .*%.$') then
-		return false
-	end
-
-	-- Ranged squarely; this must come before regular ranged attack parsing
-	-- since 'squarely' would get consumed into the mob name otherwise
-    start, stop, player,
-    mob, damage = string.find(line, "^(%w+)'s ranged attack hits ([^.]-) squarely for (%d+) points? of damage!")
-    if player and mob and damage then
-		accumulate(mob, player, damage)
-        return true
-    end
-
-	-- Ranged normal
-    start, stop, player,
-    mob, damage = string.find(line, "^(%w+)'s ranged attack hits ([^.]-) for (%d+) points? of damage%.")
-    if player and mob and damage then
-		accumulate(mob, player, damage)
-        return true
-    end
-
-	-- Ranged truestrike
-    start, stop, player,
-    mob, damage = string.find(line, "^(%w+)'s ranged attack strikes true, pummeling ([^.]-) for (%d+) points? of damage!")
-    if player and mob and damage then
-		accumulate(mob, player, damage)
-        return true
-    end
-	
-	-- Ranged crit
-    start, stop, player,
-    mob, damage = string.find(line, "^(%w+)'s ranged attack scores a critical hit!\7([^.]-) takes (%d+) points? of damage%.")
-    if player and mob and damage then
-		accumulate(mob, player, damage)
-        return true
-    end
-
-	-- Regular melee hits
-    start, stop, player,
-    mob, damage = string.find(line, "^(%w+) hits (.*) for (%d+) points? of damage%.")
-    if player and mob and damage then
-		accumulate(mob, player, damage)
-        return true
-    end
-
-	-- Retaliates
-    start, stop, player,
-	mob, damage = string.find(line, "^(%w+) Retaliates%. (.-) takes (%d+) points? of damage%.")
-    if player and mob and damage then
-		accumulate(mob, player, damage)
-		return true
-    end	
-	
-	-- Counters
-    start, stop, mob,
-	player, damage = string.find(line, "^(.-)'s attack is countered by (%w+)%. %1 takes (%d+) point? of damage%.")
-    if player and mob and damage then
-		accumulate(mob, player, damage)
-		return true
-    end
-	
-	-- critical hit
-    start, stop, player,
-	mob, damage = string.find(line, "^(%w+) scores a critical hit!\7([^.]-) takes (%d+) points? of damage%.")
-	if player and mob and damage then
-		accumulate(mob, player, damage)
-		return true
-	end
-	
-	-- weaponskill
-    start, stop, player,
-	wsName, mob, damage = string.find(line, "^(%w+) uses (.*)%.\7([^.]-) takes (%d+) points? of damage%.")
-	if player and wsName and mob and damage then
-		accumulate(mob, player, damage)
-		return true
-	end
-
-	-- spellcasting
-	line = string.gsub(line, "^Magic Burst! ", "") -- strip off magic burst tag if there is one
-    start, stop, player,
-	spellName, mob, damage = string.find(line, "^(%w+) casts (.*)%.\7([^.]-) takes (%d+) points? of damage%.")
-	if player and spellName and mob and damage then
-		accumulate(mob, player, damage)
-		return true
-	end
-
-    return false
-end
-
 
 -- Adds the given data to the main DPS table
 function accumulate(mob, player, damage)
@@ -317,7 +314,6 @@ function accumulate(mob, player, damage)
 	else
 		dps_db[mob][player] = damage + dps_db[mob][player] 
 	end
-	
 end
 
 
@@ -348,7 +344,7 @@ function get_sorted_player_damage()
 	
 	local function filter_contains_mob(mob_name)
 		for _, mob_pattern in ipairs(mob_filter) do
-			if mob_name:find(mob_pattern) then
+			if mob_name:lower():find(mob_pattern:lower()) then
 				return true
 			end
 		end
@@ -384,6 +380,22 @@ function get_sorted_player_damage()
 	return sortable, total_damage
 end
 
+-- Convert integer seconds into a "HhMmSs" string
+function seconds_to_hms(seconds)
+	hours = math.floor(seconds / 3600)
+	seconds = seconds - hours * 3600
+
+	minutes = math.floor(seconds / 60)
+	seconds = seconds - minutes * 60
+	
+	local hours_str    = hours > 0 and hours .. "h" or ""
+	local minutes_str  = minutes > 0 and minutes .. "m" or ""
+	local seconds_str  = seconds and seconds .. "s" or ""
+	
+	return hours_str .. minutes_str .. seconds_str
+end
+
+
 -- Returns the string for the scoreboard header with updated info
 -- about current mob filtering and whether or not time is currently
 -- contributing to the DPS value.
@@ -412,7 +424,7 @@ function build_scoreboard_header()
 
 	local dps_clock_str = ''
 	if dps_active or dps_clock > 1 then
-		dps_clock_str = string.format(" (%ds)", dps_clock)
+		dps_clock_str = string.format(" (%s)", seconds_to_hms(dps_clock))
 	end
 	return string.format("DPS: %s%s\nMobs: %-9s\n%s",  dps_status, dps_clock_str, mob_filter_str, labels)
 end
@@ -440,7 +452,9 @@ function update_scoreboard()
 end
 
 
-function report_summary ()
+function report_summary (...)
+	local chatmode, tell_target = table.unpack({...})
+	
 	local damage_table, total_damage
 	damage_table, total_damage = get_sorted_player_damage()
 	local max_line_length = 127 -- game constant
@@ -456,96 +470,24 @@ function report_summary ()
 		if new_line_length < max_line_length then
 			display_table:append(formatted_entry)
 			line_length = new_line_length
+		else
+			-- If we don't break here, a subsequent player could fit but that would result
+			-- in out-of-order damage reporting
+			break
 		end
 	end
 
 	-- Send the report to the current chatmode
-	send_command('input ' .. table.concat(display_table, ', '))
-end
-
-
-function enemy_is_defeated(line)
-	local start, stop, player
-	
-	local active_party = get_active_party()
-	start, stop, player = string.find(line, '^(%w+) defeats .*%.')
-	if player and active_party[player] then
-		return true
-	else
-		return false
-	end
-end
-
-
-function event_incoming_text(original, modified, color)
-	local success = parse_line(original)
-	
-	if success then
-		-- Thanks to damaging log messages often appearing after an enemy is defeated,
-		-- we have to put a little delay in autostop to prevent a quick stop/start
-		if dps_autostart and not dps_active and (os.time() - dps_auto_stop_time) > 2 then
-			dps_active = true
-			dps_clock_prev_time = 0
+	local input_cmd = 'input '
+	if chatmode then
+		input_cmd = input_cmd .. '/' .. chatmode .. ' '
+		if tell_target then
+			input_cmd = input_cmd .. tell_target .. ' '
 		end
-		
-		update_scoreboard()
-		update_dps_clock()
-	elseif enemy_is_defeated(original) and dps_autostop then
-		dps_active = false
-		dps_auto_stop_time = os.time()
 	end
-
-	return modified, color
+	send_command(input_cmd .. table.concat(display_table, ', '))
 end
 
-
---[[
-
-== Chat Log Syntax ==
-
-Crit syntax:
-<Player> scores a critical hit!0x07<mob> takes <integers> point(s)? of damage.
-
-Melee syntax:
-<Player> hits <mob> for <integer> point(s)? of damage.
-
-Melee miss syntax:
-<Player> misses <mob>.
-
-Ranged normal syntax:
-<Player>'s ranged attack hits <mob> for <integer> points? of damage.
-
-Ranged squarely syntax:
-<Player>'s ranged attack hits <mob> squarely for <integer> points? of damage!
-
-Ranged crit syntax:
-<Player>'s ranged attack scores a critical hit!0x07<mob> takes <integer> points? of damage.
-
-Ranged true strike sytnax:
-<Player>'s ranged attack strikes true, pummeling <mob> for <integer> points? of damage!
-
-Weaponskill syntax:
-<Player> uses <WS Name>.0x07<mob> takes <integers> point(s)? of damage.
-
-Weaponskill miss syntax:
-<Player> uses <WS Name>, but misses the <mob>.
-
-Offensive spell syntax:
-<Player> casts <Spell name>.\0x07<mob> takes <integers> point(s) of damage.
-
-Retaliation syntax:
-<Player> retaliates. <mob> takes <integers> points? of damage.
-
-Counter syntax:
-<mob>'s attack is countered by <Player>. <mob> takes <integers> points? of damage.
-
-Magic Burst syntax:
-Magic Burst! <mob> takes <integers> points? of damage.
-
-Medicine syntax:
-<Player> uses a <medicine name>.
-
-]]
 
 
 --[[

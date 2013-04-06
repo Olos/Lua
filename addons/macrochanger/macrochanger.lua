@@ -1,4 +1,32 @@
+--Copyright (c) 2013, Banggugyangu
+--All rights reserved.
+
+--Redistribution and use in source and binary forms, with or without
+--modification, are permitted provided that the following conditions are met:
+
+--    * Redistributions of source code must retain the above copyright
+--      notice, this list of conditions and the following disclaimer.
+--    * Redistributions in binary form must reproduce the above copyright
+--      notice, this list of conditions and the following disclaimer in the
+--      documentation and/or other materials provided with the distribution.
+--    * Neither the name of <addon name> nor the
+--      names of its contributors may be used to endorse or promote products
+--      derived from this software without specific prior written permission.
+
+--THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+--ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+--WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+--DISCLAIMED. IN NO EVENT SHALL <your name> BE LIABLE FOR ANY
+--DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+--(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+--LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+--ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+--(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+--SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 function event_load()
+	version = '1.0.0'
+	globaldisable = 0
 	WAR_Book = ''
 	WAR_Page = ''
 	MNK_BOOK = ''
@@ -44,6 +72,9 @@ function event_load()
 	RUN_Book = ''
 	RUN_Page = ''
 	send_command('alias mc lua c macrochanger cmd')
+	send_command('alias macrochanger lua c macrochanger cmd')
+	add_to_chat(17, 'MacroChanger v' .. version .. ' loaded.     Author:  Banggugyangu')
+	add_to_chat(17, 'Attempting to load settings from file.')
 	options_load()
 end
 
@@ -59,14 +90,16 @@ function options_load()
 		g:write('Author Comment: If 2 jobs share a book, you can place the same book number for each job, then put their individual pages.\46\n')
 		g:write('Author Comment: Example:  BLM and SCH both use Macro Book 2:  BLM uses page 3. SCH uses page 1.\46\n')
 		g:write('Author Comment: Put BLM Book: 2,  BLM Page: 3,  SCH Book: 2,  SCH Page: 1.\46\n')
-		g:write('Author Comment: If you wish to disable auto-macro Changing for a specific job, type "disabled".  (e.g. BLM Book: disabled)\n')
+		g:write('Author Comment: If you wish to disable auto-macro Changing for a specific job, type "disabled" instead of a book number.  (e.g. BLM Book: disabled)\n')
 		g:write('Author Comment: The design of the settings file is credited to Byrthnoth as well as the creation of the settings file.\n\n\n')
 		g:write('File Settings: Fill in below\n')
+		g:write('Disable All: 0\n')
 		g:write('WAR Book: 1\nWAR Page: 1\nMNK Book: 2\nMNK Page: 1\nWHM Book: 3\nWHM Page: 1\nBLM Book: 4\nBLM Page: 1\nRDM Book: 5\nRDM Page: 1\nTHF Book: 6\nTHF Page: 1\n')
 		g:write('PLD Book: 7\nPLD Page: 1\nDRK Book: 8\nDRK Page: 1\nBST Book: 9\nBST Page: 1\nBRD Book: 10\nBRD Page: 1\nRNG Book: 11\nRNG Page: 1\nSAM Book: 12\nSAM Page: 1\n')
 		g:write('NIN Book: 13\nNIN Page: 1\nDRG Book: 14\nDRG Page: 1\nSMN Book: 15\nSMN Page: 1\nBLU Book: 16\nBLU Page: 1\nCOR Book: 17\nCOR Page: 1\nPUP Book: 18\nPUP Page: 1\n')
 		g:write('DNC Book: 19\nDNC Page: 1\nSCH Book: 20\nSCH Page: 1\nGEO Book: 20\nGEO Page: 1\nRUN Book: 20\nRUN Page: 1\n')
 		g:close()
+		DisableAll = 0
 		WAR_Book = '1'
 		WAR_Page = '1'
 		MNK_BOOK = '2'
@@ -181,9 +214,9 @@ function options_load()
 				SMN_Book = splat[3]
 			elseif cmd == 'smn page' then
 				SMN_Page = splat[3]
-			elseif cmd == 'blm book' then
+			elseif cmd == 'blu book' then
 				BLU_Book = splat[3]
-			elseif cmd == 'blm page' then
+			elseif cmd == 'blu page' then
 				BLU_Page = splat[3]
 			elseif cmd == 'cor book' then
 				COR_Book = splat[3]
@@ -209,6 +242,8 @@ function options_load()
 				RUN_Book = splat[3]
 			elseif cmd == 'run page' then
 				RUN_Page = splat[3]
+			elseif cmd == 'disable all' then
+				globaldisable = tonumber(splat[3])
 			end
 		end
 		add_to_chat(12,'MacroChanger read from a settings file and loaded!')
@@ -241,76 +276,87 @@ function event_job_change(mjobId, mjob)
 	local job = player.main_job
 	local book = ''
 	local page = ''
-	if job == 'WAR' then
-		book = WAR_Book
-		page = WAR_Page
-	elseif job == 'MNK' then
-		book = MNK_Book
-		page = MNK_Page
-	elseif job == 'WHM' then
-		book = WHM_Book
-		page = WHM_Page
-	elseif job == 'BLM' then
-		book = BLM_Book
-		page = BLM_Page
-	elseif job == 'RDM' then
-		book = RDM_Book
-		page = RDM_Page
-	elseif job == 'THF' then
-		book = THF_Book
-		page = THF_Page
-	elseif job == 'PLD' then
-		book = PLD_Book
-		page = PLD_Page
-	elseif job == 'DRK' then
-		book = DRK_Book
-		page = DRK_Page
-	elseif job == 'BST' then
-		book = BST_Book
-		page = BST_Page
-	elseif job == 'BRD' then
-		book = BRD_Book
-		page = BRD_Page
-	elseif job == 'RNG' then
-		book = RNG_Book
-		page = RNG_Page
-	elseif job == 'SAM' then
-		book = SAM_Book
-		page = SAM_Page
-	elseif job == 'NIN' then
-		book = NIN_Book
-		page = NIN_Page
-	elseif job == 'DRG' then
-		book = DRG_Book
-		page = DRG_Page
-	elseif job == 'SMN' then
-		book = SMN_Book
-		page = SMN_Page
-	elseif job == 'BLU' then
-		book = BLU_Book
-		page = BLU_Page
-	elseif job == 'COR' then
-		book = COR_Book
-		page = COR_Page
-	elseif job == 'PUP' then
-		book = PUP_Book
-		page = PUP_Page
-	elseif job == 'DNC' then
-		book = DNC_Book
-		page = DNC_Page
-	elseif job == 'SCH' then
-		book = SCH_Book
-		page = SCH_Page
-	elseif job == 'GEO' then
-		book = GEO_Book
-		page = GEO_Page
-	elseif job == 'RUN' then
-		book = RUN_Book
-		page = RUN_Page
+	if globaldisable == 0 then
+		if job == 'WAR' then
+			book = WAR_Book
+			page = WAR_Page
+		elseif job == 'MNK' then
+			book = MNK_Book
+			page = MNK_Page
+		elseif job == 'WHM' then
+			book = WHM_Book
+			page = WHM_Page
+		elseif job == 'BLM' then
+			book = BLM_Book
+			page = BLM_Page
+		elseif job == 'RDM' then
+			book = RDM_Book
+			page = RDM_Page
+		elseif job == 'THF' then
+			book = THF_Book
+			page = THF_Page
+		elseif job == 'PLD' then
+			book = PLD_Book
+			page = PLD_Page
+		elseif job == 'DRK' then
+			book = DRK_Book
+			page = DRK_Page
+		elseif job == 'BST' then
+			book = BST_Book
+			page = BST_Page
+		elseif job == 'BRD' then
+			book = BRD_Book
+			page = BRD_Page
+		elseif job == 'RNG' then
+			book = RNG_Book
+			page = RNG_Page
+		elseif job == 'SAM' then
+			book = SAM_Book
+			page = SAM_Page
+		elseif job == 'NIN' then
+			book = NIN_Book
+			page = NIN_Page
+		elseif job == 'DRG' then
+			book = DRG_Book
+			page = DRG_Page
+		elseif job == 'SMN' then
+			book = SMN_Book
+			page = SMN_Page
+		elseif job == 'BLU' then
+			book = BLU_Book
+			page = BLU_Page
+		elseif job == 'COR' then
+			book = COR_Book
+			page = COR_Page
+		elseif job == 'PUP' then
+			book = PUP_Book
+			page = PUP_Page
+		elseif job == 'DNC' then
+			book = DNC_Book
+			page = DNC_Page
+		elseif job == 'SCH' then
+			book = SCH_Book
+			page = SCH_Page
+		elseif job == 'GEO' then
+			book = GEO_Book
+			page = GEO_Page
+		elseif job == 'RUN' then
+			book = RUN_Book
+			page = RUN_Page
+		end
+	
+		if ((book == 'disabled') or (page == 'disabled')) then
+			add_to_chat(17, '                             Auto Macro Switching Disabled for ' .. job ..'.')
+		else	
+			add_to_chat(17, '                             Changing macros to Book: ' .. book .. ' and Page: ' .. page .. '.  Job Changed to ' .. job)
+			send_command('input /macro book ' .. book)
+			send_command('input /macro set ' .. page)
+		end
+	elseif globaldisable == 1 then
+	
+		add_to_chat(17, '                             Auto Macro Switching Disabled for All Jobs.')
+		
 	end
-	add_to_chat(17, 'Changing macros to Book: ' .. book .. ' and Page: ' .. page .. '.  Job Changed to ' .. job)
-	send_command('input /macro book ' .. book)
-	send_command('input /macro set ' .. page)
 end
 
 function event_unload()
@@ -320,10 +366,22 @@ end
 function event_addon_command(...)
     local term = table.concat({...}, ' ')
     local splitarr = split(term,' ')
-	local mjob = get_player(main_job)
+	local mjob = get_player()['main_job']
 	if splitarr[1] == 'cmd' then
-		if splitarr[2] == 'job' then
-			add_to_chat(mjob)
+		if splitarr[2] == 'disableall' then
+			if splitarr[3] == 'on' then
+				globaldisable = 1
+				add_to_chat(17, 'All automated macro switching disabled.')
+			elseif splitarr[3] == 'off' then
+				globaldisable = 0
+				add_to_chat(17, 'Automated macro switching enabled.')
+			end
+		elseif splitarr[2]:lower() == 'help' then
+			add_to_chat(17, 'MacroChanger Commands:')
+			add_to_chat(17, 'disableall [on|off]')
+			add_to_chat(17, '   on - Disables all automated macro switching')
+			add_to_chat(17, '   off - Enables all automated macro switching not disabled individually')
+			add_to_chat(17, '   Resets to what is stored in settings upon unloading of addon.  To Permanently change, please change the option in the settings file.')
 		end
 	end
 end
