@@ -204,7 +204,7 @@ function checkgear(id)
 				slot = f
 				gearname = tostring(str:split('>',2)[2]:split('<',2)[1])
 				if tonumber(extendid) == tonumber(id) then
-					if tonumber(items.inventory[tostring(equip[''..slot..''])].id) == tonumber(gearid) then
+					if tonumber(items.inventory[equip[''..slot..'']].id) == tonumber(gearid) then
 						addtime = addtime2
 					else
 						addtime = 0
