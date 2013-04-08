@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 _addon = {}
 _addon.name = 'OhShi'
-_addon.version = '2.1'
+_addon.version = '2.12'
 
 --Requiring libraries used in this addon
 --These should be saved in addons/libs
@@ -64,7 +64,6 @@ defaults.dangerwords = T{}
 defaults.dangerwords['weaponskills'] = T{"Zantetsuken", "Geirrothr", "Astral Flow", "Chainspell", "Beastruction", "Mandible Massacre", "Oblivion's Mantle", "Divesting Gale", "Frog", "Danse", "Raksha Stance", "Yama's", "Ballistic Kick", "Eradicator", "Arm Cannon", "Gorge", "Extreme Purgitation", "Slimy Proposal", "Rancid Reflux", "Provenance Watcher starts", "Pawn's Penumbra", "Gates", "Fulmination", "Nerve", "Thundris"}
 defaults.dangerwords['spells'] = T{"Death", "Meteor", "Kaustra", "Breakga", "Thundaga IV", "Thundaja", "Firaga IV", "Firaja", "Aeroga IV", "Aeroja", "Blizzaga IV", "Blizzaja", "Stonega IV", "Stoneja"}
 settings = config.load(defaults)
-
 --This function is called when the addon loads. It is used to
 --create all the tables used and populate them. There are also
 --file checks in case settings or moblist.xml are deleted. This
@@ -340,6 +339,7 @@ function ohShi_Flash(str)
 	send_command('wait 2;ohShi timeout '..where)
 end
 --Function to refresh the list to keep it up to date.
+
 function ohShi_refresh()
 	text = ''
 	for inc = 1, #tracking do
@@ -438,8 +438,8 @@ function event_action(act)
 		--it against your danger words and the user against your moblist.
 		if act['category'] == 7 and isMob(tonumber(act['actor_id'])) then
 			local num = tonumber(act['targets'][1]['actions'][1]['param']) - 256
-			if num == nil then return end
-			local wesk = mobAbilities[num]['english'] or 'antidisestablishmentarianism'
+			if num < 1 then return end
+			local wesk = mobAbilities[num]['english']
 			if dangercheck(wesk) then
 				color2 = '\\cs(255,100,100)'
 				cres = '\\cr'
@@ -457,8 +457,10 @@ function event_action(act)
 		
 		--Category 8 is spell casting
 		if act['category'] == 8 and tonumber(act['targets'][1]['actions'][1]['message']) ~= 16 and isMob(tonumber(act['actor_id'])) then
+			local num = tonumber(act['targets'][1]['actions'][1]['param'])
+			if num <= 0 then return end
 			--Get the name of the spell by taking the spell id and going through the spells table
-			local spell = spells[tonumber(act['targets'][1]['actions'][1]['param'])]['english']
+			local spell = spells[num]['english']
 			fi = false
 			doanyway = 0
 			--Check spell against danger words.
@@ -480,7 +482,7 @@ function event_action(act)
 		end
 		
 		--This is used in tracking treasure hunter procs.
-		if act['targets'][1]['actions'][1]['has_add_effect'] then
+		if act['targets'][1]['actions'][1]['has_add_effect'] and isMob(tonumber(act['targets'][1]['id'])) then
 			if act['targets'][1]['actions'][1]['add_effect_message'] == 603 then
 				thmob = get_mob_by_id(act['targets'][1]['id'])['name']
 				thlev = act['targets'][1]['actions'][1]['add_effect_param']
@@ -583,17 +585,14 @@ end
 
 --Check if the actor is actually an npc rather than a player
 function isMob(id)
-	if get_mob_by_id(id)['is_npc'] == 1 then
-		return true
-	end
-	return false
+	return get_mob_by_id(id)['is_npc']
 end
 
 --This function is used to parse the windower resources
 --to fill tables with ability/spell names/ids.
 --Created by Byrth
 function parse_resources(lines_file)
-		local completed_table = {}
+		local completed_table = T{}
 		local counter = 0
 		for i in ipairs(lines_file) do
 				local str = tostring(lines_file[i])
@@ -602,38 +601,29 @@ function parse_resources(lines_file)
 						g,h,key = string.find(str,'index="(%d+)" ')
 				end
 				if key ~=nil then
-						completed_table[tonumber(key)]={}
+						completed_table[tonumber(key)] = T{}
 						local q = 1
 						while q <= str:len() do
-								local a,b,ind,val = string.find(str,'(%w+)="([^"]+)"',q)
+								local a,b,ind,val = string.find(str,'(%w+)="(.-)"',q)
 								if ind~=nil then
+									if ind~='id' and ind~='index' then
+										completed_table[tonumber(key)][ind] = T{}
 										completed_table[tonumber(key)][ind] = val:gsub('&quot;','\42'):gsub('&apos;','\39')
-										q = b+1
-								else
-										q = str:len()+1
-								end
+									end
+									q = b+1
+							else
+									q = str:len()+1
+							end
 						end
 						local k,v,english = string.find(str,'>([^<]+)</')
 						if english~=nil then
+								completed_table[tonumber(key)][ind] = T{}
 								completed_table[tonumber(key)]['english']=english
 						end
 				end
 		end
 		return completed_table
 end
-
---Creates the default settings/moblist in case they have been deleted
---[[function createDefaults(tystr)
-	if tystr == 'settings' then
-		local f1 = files.new(setFName)
-		f1:write("<?xml version=\"1.0\"?>")
-		f1:append("<!--File Created by ohShi.lua-->\n")
-		f1:append("\t<settings>")
-		f1:append("\t<global/>")
-		f1:append("\t</settings>")
-		settings:save('all')
-	end 
-end]]
 
 --This function is only used to delete old unused settings files
 function deleteoldsettings()
@@ -669,22 +659,3 @@ function split(msg, match)
 	end
 	return splitarr
 end
-
---[[ this is not used atm
-function open_temp_file(template)
-	local handle
-	local fname
-	assert(string.match(template, "@@@"), 
-		"ERROR open_temp_file: template must contain \"%%%\".")
-	while true do
-		fname = string.gsub(template, "@@@", tostring(math.random(10000000,99999999)))
-		handle = io.open(fname, "r")
-		if not handle then
-			handle = io.open(fname, "w")
-			break
-		end
-		io.close(handle)
-		io.write(".")   -- Shows collision, comment out except for diagnostics
-	end
-	return handle, fname
-end]]
