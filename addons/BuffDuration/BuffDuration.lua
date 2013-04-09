@@ -247,12 +247,8 @@ function checkgear(id)
 				slot = f
                 gearname = tostring(str:split('>',2)[2]:split('<',2)[1])
 				if tonumber(extendid) == tonumber(id) then
-<<<<<<< HEAD
-					if tonumber(items.inventory[equip[''..slot..'']].id) == tonumber(gearid) then
-=======
                     if equip[slot] == 0 then return end
 					if tonumber(items.inventory[equip[slot]].id) == tonumber(gearid) then
->>>>>>> Lua/master
 						addtime = addtime2
 					else
 						addtime = 0
