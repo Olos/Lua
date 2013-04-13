@@ -1,5 +1,5 @@
 Author: Suji
-Version: 0.5b
+Version: 0.6b
 Addon to show alliance DPS and damage in real time.
 Abbreviation: //sb
 
@@ -39,15 +39,21 @@ Command list:
   //sb report l        Reports to your linkshell
   //sb report t suji   Reports in tell to Suji
 
-* FILTERS
-  Lists the current mob filters that you have set.
+* FILTER
+  This takes one of three sub-commands.
+  * FILTER SHOW
+  Shows the current mob filters.
 
-* ADD <mob1> <mob2> ...
-  Adds mob(s) to the filters. These can all be substrings. Legal lua
+  * FILTER ADD <mob1> <mob2> ...
+  Adds mob(s) to the filters. These can all be substrings. Legal Lua
   patterns are also allowed.
 
-* CLEAR
+  * FILTER CLEAR
   Clears all mobs from the filter.
+
+* VISIBLE
+  Toggles the visibility of the scoreboard. Data will continue to
+  accumulate even while it is hidden.
 
 The settings file, located in addons/scoreboard/data/settings.xml, contains
 additional configuration options:
@@ -55,8 +61,12 @@ additional configuration options:
 * posY - y coordinate for position
 * numPlayers - The maximum number of players to display damage for
 * bgTransparency - Transparency level for the background. 0-255 range
-
-
+* font - The font for the Scoreboard. This defaults to Courier but it
+         it may be changed to one of the following fonts:
+         Fixedsys, Lucida Console, Courier, Courier New, MS Mincho,
+         Consolas, Dejavu Sans Mono.
+* fontsize - Size of Scoreboard's font
+ 
 Caveats:
 * DPS is an approximation, although I tested it manually and found it to
   be very accurate. Because DPS accumulation is based on the game's notion
