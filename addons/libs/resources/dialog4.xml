@@ -33,7 +33,7 @@
 	<dtd id="31" english="${number} of ${target}'s shadows absorbs the damage and disappears." color="29"/>
 	<dtd id="32" english="${target} dodges the attack." color="29"/>
 	<dtd id="33" english="${actor}'s attack is countered by ${target}.${lb}${actor} takes ${number} points of damage." color="D"/>
-	<dtd id="34" english="${actor} does not have enough MP to cast ${spell}." color="1"/>
+	<dtd id="34" english="${actor} does not have enough MP to cast ${spell}." color="122"/>
 	<dtd id="35" english="${actor} lacks the ninja tools to cast ${spell}." color="122"/>
 	<dtd id="36" english="You lose sight of ${target}." color="122"/>
 	<dtd id="37" english="You are too far from the battle to gain experience." color="1"/>
@@ -46,9 +46,9 @@
 	<dtd id="44" english="${target}'s spikes deal ${number} points of damage to ${actor}." color="D"/>
 	<dtd id="45" english="${actor} learns &quot;${weapon_skill}&quot;!" color="1"/>
 	<dtd id="46" english="Debug Message: Current POP number: (${number})" color="1"/>
-	<dtd id="47" english="${actor} cannot cast ${spell}." color="1"/>
-	<dtd id="48" english="${spell} cannot be cast on ${target}." color="1"/>
-	<dtd id="49" english="${actor} is unable to cast spells." color="1"/>
+	<dtd id="47" english="${actor} cannot cast ${spell}." color="122"/>
+	<dtd id="48" english="${spell} cannot be cast on ${target}." color="122"/>
+	<dtd id="49" english="${actor} is unable to cast spells." color="122"/>
 	<dtd id="50" english="${actor} earns a merit points!${lb}(Total: ${number})" color="1"/>
 	<dtd id="51" english="--Out of sight--" color="1"/>
 	<dtd id="52" english="${target} gives up chasing ${actor}.${lb}---Find Path Error---" color="1"/>
@@ -167,7 +167,7 @@
 	<dtd id="165" english="Additional effect: ${number} TP drained from ${target}." color="H" units="TP"/>
 	<dtd id="166" english="Additional effect: ${actor} gains the effect of ${status}." color="56"/>
 	<dtd id="167" english="Additional effect: ${actor} recovers ${number} HP." color="H" units="HP"/>
-	<dtd id="168" english="Additional effect: ${target}'s ${status} effect disappears!" color="1"/>
+	<dtd id="168" english="Additional effect: ${target}'s ${status} effect disappears!" color="101"/>
 	<dtd id="169" english="Additional effect: Warp!" color="1"/>
 	<dtd id="170" english="${target} seems ${skill}.${lb}It seems to have high evasion and defense." color="191"/>
 	<dtd id="171" english="${target} seems ${skill}.${lb}It seems to have high evasion." color="191"/>
@@ -342,8 +342,8 @@
 	<dtd id="340" english="You must equip your main weapon first to use Dual Wield." color="1"/>
 	<dtd id="341" english="${actor} casts ${spell}.${lb}${target}'s ${status} effect disappears!" color="H/>
 	<dtd id="342" english="${actor} casts ${spell}.${lb}${target}'s ${status} effect disappears!" color="H"/>
-	<dtd id="343" english="${target}'s ${status} effect disappears!" color="1"/>
-	<dtd id="344" english="${target}'s ${status} effect disappears!" color="1"/>
+	<dtd id="343" english="${target}'s ${status} effect disappears!" color="81"/>
+	<dtd id="344" english="${target}'s ${status} effect disappears!" color="81"/>
 	<dtd id="345" english="You cannot heal while you have a avatar summoned." color="1"/>
 	<dtd id="346" english="You must summon a avatar to use that command." color="1"/>
 	<dtd id="347" english="You must have pet food equipped to use that command." color="1"/>
@@ -569,9 +569,9 @@
 	<dtd id="567" english="${actor} stowed away a ${item} in ?Unknown Parameter (Type: 90) 91?his/her] tattered Maze Monger pouch." color="1"/>
 	<dtd id="568" english="Your tattered Maze Monger pouch already contains a ${item} and cannot hold another." color="1"/>
 	<dtd id="569" english="Your current status prevents you from using that ability." color="1"/>
-	<dtd id="570" english="${actor} casts ${spell}.${lb}${number} of ${target}'s status ailments disappears!" color="1"/>
-	<dtd id="571" english="${number} of ${target}'s status ailments disappears!" color="1"/>
-	<dtd id="572" english="${actor} casts ${spell}.${lb}${actor} absorbs ${number} of ${target}'s status ailments." color="1"/>
+	<dtd id="570" english="${actor} casts ${spell}.${lb}${number} of ${target}'s status ailments disappears!" color="81"/>
+	<dtd id="571" english="${number} of ${target}'s status ailments disappears!" color="81"/>
+	<dtd id="572" english="${actor} casts ${spell}.${lb}${actor} absorbs ${number} of ${target}'s status ailments." color="81"/>
 	<dtd id="573" english="${actor} or a alliance member is participating in a union.${lb}Ineligible to obtain treasure from this enemy." color="1"/>
 	<dtd id="574" english="${actor}'s pet is currently unable to perform that action." color="1"/>
 	<dtd id="575" english="${actor}'s pet does not have enough TP to perform that action." color="122"/>
@@ -640,17 +640,17 @@
 	<dtd id="644" english="${actor} uses ${ability}.${lb}${number} of ${target}'s status effects are removed." color="H"/>
 	<dtd id="645" english="${actor} uses ${ability}.${lb}${target} is ${status}." color="65"/>
 	<dtd id="646" english="${actor} uses ${ability}.${lb}${target} falls to the ground." color="56"/>
-	<dtd id="647" english="${actor} casts ${ability}.${lb}${target}'s ${status} effect disappears!" color="1"/>
+	<dtd id="647" english="${actor} casts ${ability}.${lb}${target}'s ${status} effect disappears!" color="81"/>
 	<dtd id="648" english="${actor} leads the casting of ${spell}.${lb}${target} takes ${number} points of damage." color="D"/>
 	<dtd id="649" english="A member of another party is readying ${spell} against your target.${lb}You cannot cast the same spell at this time." color="1"/>
 	<dtd id="650" english="${actor} leads the casting of ${spell}.${lb}Magic Burst!${lb}${target} takes ${number} points of damage." color="D"/>
 	<dtd id="651" english="${actor} leads the casting of ${spell}.${lb}${target} recovers ${number} hit points!" color="H"/>
 	<dtd id="652" english="Additional effect: ${target} loses ${number} TP." color="1" units="TP"/>
-	<dtd id="653" english="${actor} casts ${spell}.${lb}?${target} resists the spell.${lb}?Immunobreak!" color="69"/>
-	<dtd id="654" english="?${target} resists the spell.${lb}?Immunobreak!" color="69"/>
-	<dtd id="655" english="${actor} casts ${spell}.${lb}?${target} completely resists the spell." color="69"/>
-	<dtd id="656" english="?${target} completely resists the spell." color="69"/>
-	<dtd id="657" english="${actor} uses ${ability}.${lb}?All enmity is transferred to ${target}." color="101"/>
+	<dtd id="653" english="${actor} casts ${spell}.${lb}${target} resists the spell.${lb}Immunobreak!" color="69"/>
+	<dtd id="654" english="${target} resists the spell.${lb}Immunobreak!" color="69"/>
+	<dtd id="655" english="${actor} casts ${spell}.${lb}${target} completely resists the spell." color="69"/>
+	<dtd id="656" english="${target} completely resists the spell." color="69"/>
+	<dtd id="657" english="${actor} uses ${ability}.${lb}All enmity is transferred to ${target}." color="101"/>
 	<dtd id="658" english="${actor} uses ${ability}, but misses ${target}." color="104"/>
 	<dtd id="659" english="No effect on ${target}." color="1"/>
 	<dtd id="660" english="The same effect is already active on that luopan!" color="1"/>

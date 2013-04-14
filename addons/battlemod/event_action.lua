@@ -28,20 +28,21 @@ function event_action(act)
 			if act['category'] == 1 then -- Melee swings
 				if act['targets'][i]['actions'][n]['reaction'] == 11 then
 					abil = 'Parries'
-					actor,target,flipped = flip(actor,target)
-				elseif  act['targets'][i]['actions'][n]['reaction'] == 12 then abil = 'Blocks'
-					actor,target,flipped = flip(actor,target)
+					actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
+				elseif  act['targets'][i]['actions'][n]['reaction'] == 12 then abil = 'Block'
+					actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
 					number = act['targets'][i]['actions'][n]['param']
 				elseif act['targets'][i]['actions'][n]['message'] == 1 then abil = 'Hit'
 					number = act['targets'][i]['actions'][n]['param']
-				elseif act['targets'][i]['actions'][n]['message'] == 15 then abil = 'Misses'
+				elseif act['targets'][i]['actions'][n]['message'] == 15 then abil = 'Miss'
 				elseif act['targets'][i]['actions'][n]['message'] == 32 then abil = 'Dodges'
-					actor,target,flipped = flip(actor,target)
+					actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
 				elseif act['targets'][i]['actions'][n]['message'] == 106 then abil = 'Intimidates'
-					actor,target,flipped = flip(actor,target)
-				elseif act['targets'][i]['actions'][n]['message'] == 31 then abil = 'Disappears'
-					actor,target,flipped = flip(actor,target)
+					actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
+				elseif act['targets'][i]['actions'][n]['message'] == 31 then
+					actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
 					number = act['targets'][i]['actions'][n]['param']
+					abil = 'Disappears'
 				elseif act['targets'][i]['actions'][n]['message'] == 67 then abil = 'Crit'
 					number = act['targets'][i]['actions'][n]['param']
 				elseif debugging and not act['targets'][i]['actions'][n]['has_spike_effect'] then
@@ -150,10 +151,10 @@ function event_action(act)
 			
 			if act['targets'][i]['actions'][n]['message'] == 158 or act['targets'][i]['actions'][n]['message'] == 188 or act['targets'][i]['actions'][n]['message'] == 245 or act['targets'][i]['actions'][n]['message'] == 324 or act['targets'][i]['actions'][n]['message'] == 592 or act['targets'][i]['actions'][n]['message'] == 658 then
 			-- When you miss a WS or JA. Relevant for condensed battle.
-				number = 'Miss' -- I don't know if this is doing anything.
-			elseif act['targets'][i]['actions'][n]['message'] == 31 and condensebattle then
+				number = 'Miss'
+			elseif act['targets'][i]['actions'][n]['message'] == 31 and number and condensebattle then
 				number = number..' Shadow' -- Error here, number was nil.
-			elseif act['targets'][i]['actions'][n]['message'] ~= 0 then
+			elseif act['targets'][i]['actions'][n]['message'] ~= 0 and number then
 				if dialog[act['targets'][i]['actions'][n]['message']]['units'] ~= nil and condensebattle then
 					number = number..' '..dialog[act['targets'][i]['actions'][n]['message']]['units']
 				elseif dialog[act['targets'][i]['actions'][n]['message']]['color'] == 'H' and condensebattle then
@@ -290,7 +291,7 @@ function event_action(act)
 					elseif addmsg ==603 then
 						abil = 'Treasure Hunter Level'
 					else
-						abil = 'Add. Eff. '
+						abil = 'Add. Eff.'
 					end
 										
 					if condensebattle then
