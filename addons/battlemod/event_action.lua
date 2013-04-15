@@ -18,7 +18,7 @@ function event_action(act)
 
 	for i,v in pairs(act['targets']) do
 		for n,m in pairs(act['targets'][i]['actions']) do			
-			local prepstr,abil,add_eff_str,spike_str,forcemsg,wsparm,status,number,spell,ability,weapon_skill,item
+			local prepstr,abil,add_eff_str,spike_str,forcemsg,wsparm,status,number,spell,ability,weapon_skill,item,gil
 			
 			local flipped = false
 			local target_table = get_mob_by_id(act['targets'][i]['id'])
@@ -57,19 +57,24 @@ function event_action(act)
 					number = nil
 				elseif act['targets'][i]['actions'][n]['message'] == 576 then abil = 'RA Hits Squarely'
 				elseif act['targets'][i]['actions'][n]['message'] == 577 then abil = 'RA Strikes True'
+				elseif act['targets'][i]['actions'][n]['message'] == 157 then abil = 'Barrage'
 				end
 			elseif act['category'] == 3 then -- Weapon Skills
 				number = act['targets'][i]['actions'][n]['param']
 				a,b = string.find(dialog[act['targets'][i]['actions'][n]['message']]['english'],'$\123ability\125') -- Jump registers as a weaponskill and doesn't use an offset.
 				if a then
 					ability = color_arr['wscol']..jobabilities[act['param']]['english']..string.char(0x1E,0x01)
-					if items[act['targets'][i]['actions'][n]['param']] then
+					gil = act['targets'][i]['actions'][n]['param']
+					if items[act['targets'][i]['actions'][n]['param']] then -- What the hell is this for?
 						item = color_arr['itemcol']..items[act['targets'][i]['actions'][n]['param']]['enl']..string.char(0x1E,0x01)
+					end
+					if statuses[act['targets'][i]['actions'][n]['param']] then
+						status = statuses[act['targets'][i]['actions'][n]['param']]['english']
 					end
 				else
 					weapon_skill = color_arr['wscol']..jobabilities[act['param']+768]['english']..string.char(0x1E,0x01)
 				end
-			elseif act['category'] == 4 then
+			elseif act['category'] == 4 then -- Magic
 				number = act['targets'][i]['actions'][n]['param']
 				if nf(spells[act['param']],'english') then
 					spell= color_arr['spellcol']..nf(spells[act['param']],'english')..string.char(0x1E,0x01)
@@ -82,10 +87,13 @@ function event_action(act)
 				elseif statuses[act['targets'][i]['actions'][n]['param']] ~= nil then
 					status = color_arr['statuscol']..statuses[act['targets'][i]['actions'][n]['param']]['english']..string.char(0x1E,0x01)
 				end
-			elseif act['category'] == 5 then
+			elseif act['category'] == 5 then -- Item use
 				item = color_arr['itemcol']..items[act['param']]['enl']..string.char(0x1E,0x01)
 				number = act['targets'][i]['actions'][n]['param']
-			elseif act['category'] == 6 then
+				if statuses[act['targets'][i]['actions'][n]['param']] then
+					status = statuses[act['targets'][i]['actions'][n]['param']]['english']
+				end
+			elseif act['category'] == 6 then -- JA use
 				ability = color_arr['abilcol']..jobabilities[act['param']]['english']..string.char(0x1E,0x01)
 				number = act['targets'][i]['actions'][n]['param']
 				if act['targets'][i]['actions'][n]['param']~=0 then
@@ -93,12 +101,13 @@ function event_action(act)
 				else
 					status = ability
 				end
-			elseif act['category'] == 7 then
+			elseif act['category'] == 7 then -- Ready WS / TP move / Pet TP move
 				wsparm = act['targets'][i]['actions'][n]['param']
 				if actor_table['is_npc'] then
 					if actor_table['id']%4096 > 2048 then -- If the NPC is a pet
 						if jobabilities[wsparm] or debugging then -- Just covering it up until I figure out why it is happening.
 							ability = color_arr['abilcol']..jobabilities[wsparm]['english']..string.char(0x1E,0x01)
+							weapon_skill = color_arr['abilcol']..jobabilities[wsparm]['english']..string.char(0x1E,0x01)
 						end
 					else
 						if wsparm > 256 then -- Accounts for TP moves that don't show up in the logs, like the Geyser eruption
@@ -108,14 +117,14 @@ function event_action(act)
 				else
 					weapon_skill = color_arr['wscol']..jobabilities[wsparm+768]['english']..string.char(0x1E,0x01) --- Nil concat error somehow.
 				end
-			elseif act['category'] == 8 then
+			elseif act['category'] == 8 then -- Begin casting
 				spell = color_arr['spellcol']..spells[act['targets'][i]['actions'][n]['param']]['english']..string.char(0x1E,0x01)
-			elseif act['category'] == 9 then
+			elseif act['category'] == 9 then -- Begin using item
 				if act['param'] ~= 115 then
 					item = nf(items[act['targets'][i]['actions'][n]['param']],'enl')
 					if item then item = color_arr['itemcol']..item..string.char(0x1E,0x01) end
 				end
-			elseif act['category'] == 11 then
+			elseif act['category'] == 11 then -- Monster TP moves
 				weapon_skill = mabils[act['param']-256]['english']
 				if weapon_skill == '.' then
 					weapon_skill = 'Special Attack'
@@ -141,6 +150,13 @@ function event_action(act)
 				if act['targets'][1]['actions'][1]['message'] == 522 then
 					target = target..' (stunned)'
 				end
+			elseif act['category'] == 15 then
+				ability = color_arr['abilcol']..jobabilities[act['param']]['english']..string.char(0x1E,0x01)
+				status = nf(statuses[act['targets'][i]['actions'][n]['param']],'english')
+				if status ~= nil then
+					status = color_arr['statuscol']..status..string.char(0x1E,0x01)
+				end
+				number = act['targets'][i]['actions'][n]['param']
 			end
 			
 			-- Sets the common field "abil" based on the applicable abilities.
@@ -191,15 +207,12 @@ function event_action(act)
 					else ---- Can remove once I don't see it anymore ----
 						prepstr = dialog[act['targets'][i]['actions'][n]['message']]['english']
 					end
-				else
+				elseif dialog[act['targets'][i]['actions'][n]['message']] or debugging then -- Shouldn't really be necessary.
 					prepstr = dialog[act['targets'][i]['actions'][n]['message']]['english']
 				end
 			elseif act['category'] == 12 then -- Handles category 12 cases
-				if act['param']==24931 then -- Initiation of the ranged attack
-					prepstr = ''
-				elseif act['param'] == 28787 then -- Interruption of the ranged attack
-					prepstr = dialog[218]['english'] -- 220 is the same message
-					forcemsg = 218
+				if act['param']==24931 or act['param']==24931 then -- Initiation or interruption of the ranged attack
+					prepstr = nil
 				elseif debugging then
 					write('debug12: '..act['param'])
 				end
@@ -217,7 +230,7 @@ function event_action(act)
 			
 			-- Avoid nil field errors using " or ''" with all the gsubs.
 			if prepstr then
-				prepstr = prepstr:gsub('$\123lb\125','\7'):gsub('$\123actor\125',actor or ''):gsub('$\123spell\125',spell or ''):gsub('$\123ability\125',ability or ''):gsub('$\123abil\125',abil or ''):gsub('$\123number\125',number or ''):gsub('$\123weapon_skill\125',weapon_skill or ''):gsub('$\123status\125',status or ''):gsub('$\123item\125',item or '')
+				prepstr = prepstr:gsub('$\123lb\125','\7'):gsub('$\123actor\125',actor or ''):gsub('$\123spell\125',spell or ''):gsub('$\123ability\125',ability or ''):gsub('$\123abil\125',abil or ''):gsub('$\123number\125',number or ''):gsub('$\123weapon_skill\125',weapon_skill or ''):gsub('$\123status\125',status or ''):gsub('$\123item\125',item or ''):gsub('$\123gil\125',gil or '')
 			end
 			
 			-- Construct the message to be sent out --
@@ -276,7 +289,7 @@ function event_action(act)
 			local addmsg = act['targets'][i]['actions'][n]['add_effect_message']
 			
 			if act['targets'][i]['actions'][n]['has_add_effect'] and act['targets'][i]['actions'][n]['add_effect_message'] ~= 0 then
-				if act['category'] == 1 or act['category'] == 2 or act['category'] == 3 or act['category'] == 11 or debugging then
+				if act['category'] == 1 or act['category'] == 2 or act['category'] == 3 or act['category'] == 4 or act['category'] == 11 or debugging then
 					if addmsg == 152 or addmsg == 161 or addmsg == 162 or addmsg == 163 or addmsg == 167 or addmsg == 229 or addmsg == 384 or addmsg == 603 or addmsg == 652 or addmsg > 287 and addmsg < 303 then
 						number = act['targets'][i]['actions'][n]['add_effect_param']
 					else
@@ -313,7 +326,7 @@ function event_action(act)
 			
 			-- Need to add battlemod battle condensation to this --
 			
-			if act['targets'][i]['actions'][n]['has_spike_effect'] then -- and act['category']==1 and spkmsg ~= 0 then
+			if act['targets'][i]['actions'][n]['has_spike_effect'] and act['category']==1 and spkmsg ~= 0 then
 				number = act['targets'][i]['actions'][n]['spike_effect_param']
 				if condensebattle then
 					if spkmsg > 0 then

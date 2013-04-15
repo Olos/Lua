@@ -30,7 +30,7 @@ function event_addon_command(...)
 	if cmd[1] ~= nil then
 		if cmd[1]:lower() == "help" then
 			write('To stop rolltracker stopping rolls type: //rolltracker autostop')
-			write('To restart rolltracker stopping doubleup type //rolltracker Doubleup')
+			write('To restart rolltracker stopping doubleup type //rolltracker Doubleup')	
 		end
 
 		if cmd[1]:lower() == "autostop" then
@@ -42,7 +42,8 @@ function event_addon_command(...)
 			override=0
 			write('Enable Autostoppping Doubleup')
 		end
-		
+	
+
 	end
 end 
 
@@ -59,10 +60,9 @@ function event_load()
 				109, 110, 111, 112,
 				113, 114, 115, 116,
 				117, 118, 119, 120,
-				121, 122, 303, 302,
-				303, 304, 305
+				121, 122, 303, 302, 304, 305
 			}
-	roll_name={}
+	player_color={['p0']=string.char(31, 167),['p1']=string.char(31, 209),['p2']=string.char(31, 204),['p3']=string.char(31,189),['p4']=string.char(31,3),['p5']=string.char(31,158)}
 	roll_ident={[97]=' ', ['98']='Fighter\'s',['99']='MNK',['100']='WHM',
 						['101']='Wizard\'s',['102']='Warlock\'s',['103']='Rogue\'s',
 						['104']='Gallant\'s',['105']='Chaos',['106']='Beast',
@@ -76,6 +76,7 @@ function event_load()
 	roll_luck={ 0,5,3,3,5,4,5,3,4,4,2,4,2,4,4,5,2,5,3,3,2,3,2,3,4,5,5,3,2,4 }
 	roll_bonus={}
 	rollnum=''
+	
 	roll_buff={
 				['Chaos']={6,8,9,25,11,13,16,3,17,19,31,"-4", '% Attack!'},
 				['Fighter\'s']={ 2,2,3,4,12,5,6,7,1,9,18,'-4','% Double-Attack!'},
@@ -98,35 +99,30 @@ function event_load()
 				['Bolter\'s']={2,3,12,4,6,7,8,9,5,10,25,'-8','% Movement Speed'},
 				['Caster\'s']={6,15,7,8,9,10,5,11,12,13,20,'-10','% Fast Cast'},
 				['Tactician\'s']={1,1,1,1,3,1,1,0,2,2,4,'-1','Regain'},
-				['Miser\'s']={3,5,7,9,20,11,2,13,15,17,25,'','Save TP'},
-				['Ninja']={'','','','','','','','','','','','','Evasion Bonus'},
-				['Scholar\'s']={'','','','','','','','','','','','','Conserve MP'},
-				['Allies\'']={6,7,17,9,11,13,15,17,17,5,17,'','% Skillchain Damage'},
-				['Companion\'s']={'','','','','','','','','','','','','Pet: Regen and Regain'},
-				['Avenger\'s']={'','','','','','','','','','','','','Counter Rate'},
+				['Miser\'s']={3,5,7,9,20,11,2,13,15,17,25,'Save TP'},
+				['Ninja']={'?','?','?','?','?','?','?','?','?','?','?','?','Evasion Bonus'},
+				['Scholar\'s']={'?','?','?','?','?','?','?','?','?','?','?','?','Conserve MP'},
+				['Allies\'']={6,7,17,9,11,13,15,17,17,5,17,'?','% Skillchain Damage'},
+				['Companion\'s']={'?','?','?','?','?','?','?','?','?','?','?','?','Pet: Regen and Regain'},
+				['Avenger\'s']={'?','?','?','?','?','?','?','?','?','?','?','?','Counter Rate'},
 				}
 				
 end
 
-function event_unload()
-	
-end
 
 function event_incoming_text(old, new, color)
-	match_roll =  old:match(player..' uses (.*)%\'?s? Roll. The')
 	match_doubleup = old:find (player..' uses Double')
-	match_du= old:match('The total for (.*)%\'?s? Roll increases to')
-	
-	if match_roll ~=nil  then
-		new= ''
-	end
-	
-	if match_doubleup ~= nil then 
+	battlemod_compat = old:find(player..'.*% Roll.* %d')
+	not_party = old:find ('%('..'%w+'..'%)')
+	if battlemod_compat or match_doubleup and not_party~=nil then
 		new=''
+	end
+	if not_party then
+		new=old
 	end
 	return new, color
 end
-		 	 
+
 function event_action(act)
 	if act['actor_id'] == get_player()['id'] then
 		if act['category']==6 then
@@ -137,8 +133,10 @@ function event_action(act)
 				if roller == roll_id[i] then
 					for n=1, #act['targets'] do
 						for z in pairs(get_party()) do
-							if act['targets'][n]['id'] == get_party()[z]['mob']['id'] then
-								effected_member[n]=get_party()[z]['name']
+							if get_party()[z]['mob'] ~= nil then
+								if act['targets'][n]['id'] == get_party()[z]['mob']['id'] then	
+									effected_member[n]=player_color[z]..get_party()[z]['name']
+								end
 							end
 						end
 					end
@@ -146,11 +144,11 @@ function event_action(act)
 					luckyroll=0
 					if rollnum == roll_luck[i] or rollnum == 11 then 
 						luckyroll = 1
-						add_to_chat(1, effected_write..' >>> '..roll_ident[tostring(roller)]..' Roll ('..rollnum..')'..string.char(31,158)..' (Lucky!)'..string.char(31,13)..' (+'..roll_buff[roll_ident[tostring(roller)]][rollnum]..roll_buff[roll_ident[tostring(roller)]][13]..')')
+						add_to_chat(1, '['..#effected_member..'] '..effected_write..string.char(31,1)..' >>> '..roll_ident[tostring(roller)]..' Roll ('..rollnum..')'..string.char(31,158)..' (Lucky!)'..string.char(31,13)..' (+'..roll_buff[roll_ident[tostring(roller)]][rollnum]..roll_buff[roll_ident[tostring(roller)]][13]..')')
 					elseif rollnum==12 then
 						add_to_chat(1, string.char(31,167)..'Bust! ('..roll_buff[roll_ident[tostring(roller)]][rollnum]..roll_buff[roll_ident[tostring(roller)]][13]..')')
 					else
-						add_to_chat(1, effected_write..' >>> '..roll_ident[tostring(roller)]..' Roll ('..rollnum..')'..string.char(31,13)..' (+'..roll_buff[roll_ident[tostring(roller)]][rollnum]..roll_buff[roll_ident[tostring(roller)]][13]..')')
+						add_to_chat(1, '['..#effected_member..'] '..effected_write..string.char(31,1)..' >>> '..roll_ident[tostring(roller)]..' Roll ('..rollnum..')'..string.char(31,13)..' (+'..roll_buff[roll_ident[tostring(roller)]][rollnum]..roll_buff[roll_ident[tostring(roller)]][13]..')')
 
 				end
 			end
@@ -158,13 +156,14 @@ function event_action(act)
 	end
 end
 end
+
 			
 	
 
 function event_outgoing_text(original, modified)
 	if original:find('/jobability \"Double') and luckyroll == 1 and override == 0 then
 		modified=''
-		add_to_chat(55,'You have either a lucky Roll or  an 11. Reuse Double-Up to Double-up again.')
+		add_to_chat(55,'You either have a lucky Roll or have rolled an 11. Reuse Double-Up to continue to double-up.')
 		luckyroll=0
 		return modified
 	end
