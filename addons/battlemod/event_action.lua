@@ -103,11 +103,17 @@ function event_action(act)
 				ability = color_arr['abilcol']..ability..rcol
 			elseif table.contains(fields,'weapon_skill') then
 				if actor_table['is_npc'] then
-					weapon_skill = mabils[abil_ID-256]['english']
+					if act['category'] ~=3 and mabils[abil_ID-256] then
+						if abil_ID ~= 1531 then
+							weapon_skill = mabils[abil_ID-256]['english']
+						end
+					elseif act['category'] == 3 then
+						weapon_skill = jobabilities[abil_ID+768]['english']
+					end
 					if weapon_skill == '.' then
 						weapon_skill = 'Special Attack'
 					end
-					weapon_skill = color_arr['mobwscol']..weapon_skill..rcol
+					weapon_skill = color_arr['mobwscol']..(weapon_skill or '')..rcol
 				else
 					weapon_skill = color_arr['wscol']..jobabilities[abil_ID+768]['english']..rcol
 				end
@@ -174,7 +180,7 @@ function event_action(act)
 						elseif not actor then
 							prepstr = line_noactor
 						elseif debugging then ---- Can remove once I don't see it anymore ----
-							write(number..' '..abil..' '..target..' '..actor)
+							write((number or '')..' '..(abil or '')..' '..(target or '')..' '..(actor or ''))
 							prepstr = dialog[msg_ID]['english']
 						end
 					else ---- Can remove once I don't see it anymore ----
@@ -198,7 +204,7 @@ function event_action(act)
 			
 			-- Construct the message to be sent out --
 			if prepstr then
-				if aggregate ~= true then
+				if not aggregate then
 					if check_filter(actor_table,party_table,target_table,act['category'],msg) then
 						if dialog[msg_ID]['color'] ~= nil then
 							add_to_chat(colorfilt(dialog[msg_ID]['color'],target_table['id']==party_table['p0']['mob']['id']),string.char(0x1F,0xFE,0x1E,0x01)..prepstr:gsub('$\123target\125',target or '')..string.char(127,49))
@@ -214,13 +220,15 @@ function event_action(act)
 								number = 'Bust!'
 							end
 							persistantmessage = line_roll:gsub('$\123status\125',status or ''):gsub('$\123actor\125',actor or ''):gsub('$\123number\125',number or ''):gsub('$\123abil\125',abil or '')
-						else
+						elseif status then
 							persistantmessage = line_aoebuff:gsub('$\123status\125',status or ''):gsub('$\123actor\125',actor or ''):gsub('$\123abil\125',abil or '')
+						else
+							persistantmessage = line_nonumber:gsub('$\123actor\125',actor or ''):gsub('$\123abil\125',abil or '')
 						end
 					else
 						persistantmessage = prepstr
 					end
-					persistantcolor = dialog[msg_ID]['color']
+					persistantcolor = colorfilt(dialog[msg_ID]['color'],target_table['id']==party_table['p0']['id'])
 					persistanttarget = target
 					if act['target_count'] == 1 and check_filter(actor_table,party_table,target_table,act['category'],msg) then
 						add_to_chat(persistantcolor,persistantmessage)
@@ -287,32 +295,30 @@ function event_action(act)
 			
 			if act['targets'][i]['actions'][n]['has_spike_effect'] and act['category']==1 and spkmsg ~= 0 then
 				number = act['targets'][i]['actions'][n]['spike_effect_param']
-				if condensebattle then
-					if spkmsg > 0 then
-						if spkmsg == 14 then
-							abil = 'Shadow from Counter'
-						elseif spkmsg == 33 or spkmsg == 606 then
-							abil = 'Counter'
-							actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
-						elseif spkmsg == 592 then
-							abil = 'Counter Missed'
-							actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
-						elseif spkmsg == 536 then
-							abil = 'Retaliates'
-							actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
-						elseif spkmsg == 535 then
-							abil = 'Shadow from Retaliation'
-						else
-							abil = 'Spikes'
-							actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
-						end
-						
-						a,b = string.find(dialog[spkmsg]['english'],'$\123number\125')
-						if a then
-							spike_str = line_full:gsub('$\123actor\125',actor or ''):gsub('$\123target\125',target or ''):gsub('$\123lb\125','\7'):gsub('$\123abil\125',abil or ''):gsub('$\123number\125',number or '')
-						else
-							spike_str = line_nonumber:gsub('$\123actor\125',actor or ''):gsub('$\123target\125',target or ''):gsub('$\123lb\125','\7'):gsub('$\123abil\125',abil or '')
-						end
+				if condensebattle and spkmsg > 0 then
+					if spkmsg == 14 then
+						abil = 'Shadow from Counter'
+					elseif spkmsg == 33 or spkmsg == 606 then
+						abil = 'Counter'
+						actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
+					elseif spkmsg == 592 then
+						abil = 'Counter Missed'
+						actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
+					elseif spkmsg == 536 then
+						abil = 'Retaliates'
+						actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
+					elseif spkmsg == 535 then
+						abil = 'Shadow from Retaliation'
+					else
+						abil = 'Spikes'
+						actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
+					end
+					
+					a,b = string.find(dialog[spkmsg]['english'],'$\123number\125')
+					if a then
+						spike_str = line_full:gsub('$\123actor\125',actor or ''):gsub('$\123target\125',target or ''):gsub('$\123lb\125','\7'):gsub('$\123abil\125',abil or ''):gsub('$\123number\125',number or '')
+					else
+						spike_str = line_nonumber:gsub('$\123actor\125',actor or ''):gsub('$\123target\125',target or ''):gsub('$\123lb\125','\7'):gsub('$\123abil\125',abil or '')
 					end
 				else
 					if spkmsg > 0 then
