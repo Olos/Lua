@@ -7,6 +7,8 @@ _libs.mathhelper = true
 _libs.tablehelper = _libs.tablehelper or require 'tablehelper'
 _libs.stringhelper = _libs.stringhelper or require 'stringhelper'
 
+debug.setmetatable(0, {__index=math})
+
 -- Order of digits in an for higher base math
 math.digitorder = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
@@ -47,7 +49,7 @@ end
 
 -- Returns a hex string representation of val.
 function math.tohex(val)
-	return '0x'..math.tobase(val, 16)
+	return math.tobase(val, 16)
 end
 
 -- Converts a number val to a string in base base.

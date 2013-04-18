@@ -25,7 +25,7 @@ function T(t, ...)
 	
 	-- Sets T's metatable's index to the table namespace, which will take effect for all T-tables.
 	-- This makes every function that tables have also available for T-tables.
-	return setmetatable(t, {__index = table, __add = table.extend})
+	return setmetatable(t, {__index = table, __add = table.extend, __tostring=table.tostring})
 end
 
 _libs = T(_libs)
