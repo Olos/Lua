@@ -107,7 +107,7 @@ function event_action(act)
 						if abil_ID ~= 1531 then
 							weapon_skill = mabils[abil_ID-256]['english']
 						end
-					elseif act['category'] == 3 then
+					elseif act['category'] == 3 or abil_ID<257 then
 						weapon_skill = jobabilities[abil_ID+768]['english']
 					end
 					if weapon_skill == '.' then
@@ -118,7 +118,7 @@ function event_action(act)
 					weapon_skill = color_arr['wscol']..jobabilities[abil_ID+768]['english']..rcol
 				end
 			end
-			
+
 			if table.contains(fields,'status') then
 				if act['targets'][i]['actions'][n]['param'] == 0 or act['targets'][i]['actions'][n]['param'] == 255 then
 					status = color_arr['statuscol']..'No effect'..rcol
@@ -132,6 +132,8 @@ function event_action(act)
 				if dialog[msg_ID]['units'] and condensebattle then
 					number = number..' '..dialog[msg_ID]['units']
 				end
+			elseif table.contains(fields,'item2') then -- For when you use an item to obtain items i.e. Janus Guard
+				item2 = color_arr['itemcol']..items[effect_val]['enl']..rcol
 			elseif table.contains(fields,'gil') then
 				gil = effect_val..' gil'
 			end
@@ -144,6 +146,8 @@ function event_action(act)
 			elseif T{158,188,245,324,592,658}:contains(msg_ID) and condensebattle then
 				-- When you miss a WS or JA. Relevant for condensed battle.
 				number = 'Miss'
+			elseif nf(dialog[msg_ID],'color') =='R'	and condensebattle then
+				status = 'Resist'
 			end
 		
 			-- Sets the common field "abil" based on the applicable abilities.
@@ -152,15 +156,6 @@ function event_action(act)
 				abil = weapon_skill or ability or spell or item
 			end
 			
-			--elseif msg_ID ~= 0 and number then
-			--	if dialog[msg_ID]['color'] == 'H' and condensebattle then
-			--		if statuses[number] then
-			--			status = color_arr['statuscol']..statuses[number]['english']..rcol
-			--		elseif debugging then
-			--			write('status_debug: '..number)
-			--			status = color_arr['statuscol']..statuses[number]['english']..rcol
-			--		end
-			--	end
 			
 			if msg_ID ~= 0 then
 				if dialog[msg_ID]['color'] == 'M' or dialog[msg_ID]['color'] == 'D' or dialog[msg_ID]['color'] == 'H' or act['targets'][i]['actions'][n]['reaction'] == 11 or act['targets'][i]['actions'][n]['reaction'] == 12 or msg_ID == 31 or msg_ID == 32 or act['category']==6 or act['category']==14 then
@@ -199,7 +194,7 @@ function event_action(act)
 			
 			-- Avoid nil field errors using " or ''" with all the gsubs.
 			if prepstr then
-				prepstr = prepstr:gsub('$\123lb\125','\7'):gsub('$\123actor\125',actor or ''):gsub('$\123spell\125',spell or ''):gsub('$\123ability\125',ability or ''):gsub('$\123abil\125',abil or ''):gsub('$\123number\125',number or ''):gsub('$\123weapon_skill\125',weapon_skill or ''):gsub('$\123status\125',status or ''):gsub('$\123item\125',item or ''):gsub('$\123gil\125',gil or '')
+				prepstr = prepstr:gsub('$\123lb\125','\7'):gsub('$\123actor\125',actor or ''):gsub('$\123spell\125',spell or ''):gsub('$\123ability\125',ability or ''):gsub('$\123abil\125',abil or ''):gsub('$\123number\125',number or ''):gsub('$\123weapon_skill\125',weapon_skill or ''):gsub('$\123status\125',status or ''):gsub('$\123item\125',item or ''):gsub('$\123item2\125',item2 or ''):gsub('$\123gil\125',gil or '')
 			end
 			
 			-- Construct the message to be sent out --
@@ -228,9 +223,10 @@ function event_action(act)
 					else
 						persistantmessage = prepstr
 					end
-					persistantcolor = colorfilt(dialog[msg_ID]['color'],target_table['id']==party_table['p0']['id'])
+					persistantcolor = colorfilt(dialog[msg_ID]['color'],target_table['id']==party_table['p0']['mob']['id'])
 					persistanttarget = target
 					if act['target_count'] == 1 and check_filter(actor_table,party_table,target_table,act['category'],msg) then
+						persistantmessage = persistantmessage:gsub('$\123target\125',persistanttarget)
 						add_to_chat(persistantcolor,persistantmessage)
 					end
 				else
@@ -284,11 +280,10 @@ function event_action(act)
 				end
 			end
 			if add_eff_str ~= nil and check_filter(actor_table,party_table,target_table,act['category'],addmsg) then
-				add_to_chat(colorfilt(dialog[addmsg]['color'],target_table['id']==party_table['p0']['id']),string.char(0x1F,0xFE,0x1E,0x01)..add_eff_str..string.char(127,49))
+				add_to_chat(colorfilt(dialog[addmsg]['color'],target_table['id']==party_table['p0']['mob']['id']),string.char(0x1F,0xFE,0x1E,0x01)..add_eff_str..string.char(127,49))
 			end
 			
 			number = nil
-			if flipped then actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped) end
 			local spkmsg = act['targets'][i]['actions'][n]['spike_effect_message']
 			
 			-- Need to add battlemod battle condensation to this --
@@ -326,8 +321,8 @@ function event_action(act)
 					end
 				end
 			end
-			if spike_str ~= nil and check_filter(actor_table,party_table,target_table,spkmsg) then
-				add_to_chat(colorfilt(dialog[spkmsg]['color'],target_table['id']==party_table['p0']['id']),string.char(0x1F,0xFE,0x1E,0x01)..spike_str..string.char(127,49))
+			if spike_str ~= nil and check_filter(actor_table,party_table,target_table,act['category'],spkmsg) then
+				add_to_chat(colorfilt(dialog[spkmsg]['color'],target_table['id']==party_table['p0']['mob']['id']),string.char(0x1F,0xFE,0x1E,0x01)..spike_str..string.char(127,49))
 			end
 			
 			if flipped then actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped) end
@@ -349,7 +344,7 @@ function namecol(player,player_table,party_table)
 	-- Returns a name colored relative to color_arr
 	if not player then 	player = '' end
 	if player_table['is_npc']==true then
-		if player_table['id']%4096>2048 then
+		if player_table['id']%4096>2047 then
 			for i,v in pairs(party_table) do
 				if nf(v['mob'],'pet_index') == player_table['index'] then
 					player = color_arr[i]..player..rcol
@@ -462,10 +457,10 @@ function party_id(actor_table,party_table)
 	-- Returns "me", "party", "alliance", "others", "monsters", "my_pet", or "other_pets"
 	local partypos, filtertype
 	if actor_table['is_npc']==true then
-		if actor_table['id']%4096 > 2048 then -- Pet check
+		if actor_table['id']%4096 > 2047 then -- Pet check
 			if party_table['p0']['mob']['pet_index'] == actor_table['index'] then
 				filtertype = 'my_pet'
-			elseif party_table['p0']['pet_index'] ~= actor_table['index'] then
+			elseif party_table['p0']['mob']['pet_index'] ~= actor_table['index'] then
 				filtertype = 'other_pets'
 			end
 		elseif filter['monsters'] then

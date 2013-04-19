@@ -81,8 +81,9 @@ function settings_create()
 	for i=1, #players do
 		playernumber = players[i]
 		players[players[i]] = settingtab[set][playernumber]['name']
-		if players[players[i]] == player then
+		if players[players[i]] == player and players[players[i]] ~= "" then
 			player_num = players[i]
+		else player_num = 'player1'
 		end
 	end
 
@@ -163,20 +164,18 @@ function event_load()
 end 
 
 function event_login()
-	player = get_player()['name']
-
+	settings_create()
 end
 
 function orderlots()
-	lotorder = ""
---	for i,v in pairs(cell_lots) do write(i..' - '..v) end
+	lotorder = " "
 	for i=1, #salvage_cell_name_short  do 
 		if salvage_cell_name_short[i] ~= 'alex' and cell_lots[salvage_cell_name_short[i]] ~= 0 then
 			item = salvage_cell_name_short[i]
-			lotorder = (lotorder..item..': '..cell_lots[item]..' \n')
+			lotorder = (lotorder..item..': '..cell_lots[item]..' \n ')
 	    elseif salvage_cell_name_short[i] == 'alex' and cell_lots[salvage_cell_name_short[i]] ~= 0 then
 	    	item = salvage_cell_name_short[i]
-	    	lotorder = (lotorder..item..' \n')
+	    	lotorder = (lotorder..item..' \n ')
 	    end
 	end
 		--Temporary Item Counter to see if items are registering with filter.
