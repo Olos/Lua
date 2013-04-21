@@ -50,19 +50,33 @@ function event_action(act)
 					abil = 'Disappears'
 				elseif msg_ID == 67 then abil = 'Crit'
 					effect_val = act['targets'][i]['actions'][n]['param']
+				elseif msg_ID == 373 then abil = 'Absorbs'
+					effect_val = act['targets'][i]['actions'][n]['param']
 				elseif debugging and not act['targets'][i]['actions'][n]['has_spike_effect'] then
 					effect_val = act['targets'][i]['actions'][n]['param']
 					write('debug_cat1: '..act['targets'][i]['actions'][n]['param']..' '..msg_ID)
 				end
 			elseif act['category'] == 2 then -- Ranged attacks
 				effect_val = act['targets'][i]['actions'][n]['param']
-				if msg_ID == 352 then abil = 'RA'
-				elseif msg_ID == 353 then abil = 'Crit RA'
-				elseif msg_ID == 354 then abil = 'RA Misses'
-					effect_val = nil
-				elseif msg_ID == 576 then abil = 'RA Hits Squarely'
-				elseif msg_ID == 577 then abil = 'RA Strikes True'
-				elseif msg_ID == 157 then abil = 'Barrage'
+				if ammonumber then
+					if msg_ID == 352 then abil = 'RA '..ammo_number()
+					elseif msg_ID == 353 then abil = 'Crit RA '..ammo_number()
+					elseif msg_ID == 354 then abil = 'RA Misses '..ammo_number()
+						effect_val = nil
+					elseif msg_ID == 576 then abil = 'RA Hits Squarely '..ammo_number()
+					elseif msg_ID == 577 then abil = 'RA Strikes True '..ammo_number()
+					elseif msg_ID == 157 then abil = 'Barrage '..ammo_number()
+					elseif msg_ID == 382 then abil = 'Absorbs RA'
+					end
+				else
+					if msg_ID == 352 then abil = 'RA'
+					elseif msg_ID == 353 then abil = 'Crit RA'
+					elseif msg_ID == 354 then abil = 'RA Misses'
+						effect_val = nil
+					elseif msg_ID == 576 then abil = 'RA Hits Squarely'
+					elseif msg_ID == 577 then abil = 'RA Strikes True'
+					elseif msg_ID == 157 then abil = 'Barrage'
+					end
 				end
 			elseif T{7,8,9}:contains(act['category']) then -- 12 and 10 don't really count because their params are meaningless. 1 and 2 need manual ability sorting
 				abil_ID = act['targets'][i]['actions'][n]['param']
@@ -102,17 +116,32 @@ function event_action(act)
 				if msg_ID == 379 then ability = 'Magic Burst '..ability end
 				ability = color_arr['abilcol']..ability..rcol
 			elseif table.contains(fields,'weapon_skill') then
-				if actor_table['is_npc'] then
+				if abil_ID > 255 and abil_ID ~= 1531 then -- WZ_RECOVER_ALL is used by chests in Limbus
 					weapon_skill = mabils[abil_ID-256]['english']
 					if weapon_skill == '.' then
 						weapon_skill = 'Special Attack'
 					end
-					weapon_skill = color_arr['mobwscol']..weapon_skill..rcol
+				elseif abil_ID < 256 then
+					weapon_skill = jobabilities[abil_ID+768]['english']
+				end
+--				if actor_table['is_npc'] then
+--					if act['category'] ~=3 and mabils[abil_ID-256] then
+--						if abil_ID ~= 1531 then
+--							weapon_skill = mabils[abil_ID-256]['english']
+--						end
+--					elseif act['category'] == 3 or abil_ID<257 then
+--						weapon_skill = jobabilities[abil_ID+768]['english']
+--					end
+				if weapon_skill == '.' then
+					weapon_skill = 'Special Attack'
+				end
+				if actor['is_npc'] then
+					weapon_skill = color_arr['mobwscol']..(weapon_skill or '')..rcol
 				else
-					weapon_skill = color_arr['wscol']..jobabilities[abil_ID+768]['english']..rcol
+					weapon_skill = color_arr['wscol']..(weapon_skill or '')..rcol
 				end
 			end
-			
+
 			if table.contains(fields,'status') then
 				if act['targets'][i]['actions'][n]['param'] == 0 or act['targets'][i]['actions'][n]['param'] == 255 then
 					status = color_arr['statuscol']..'No effect'..rcol
@@ -126,6 +155,8 @@ function event_action(act)
 				if dialog[msg_ID]['units'] and condensebattle then
 					number = number..' '..dialog[msg_ID]['units']
 				end
+			elseif table.contains(fields,'item2') then -- For when you use an item to obtain items i.e. Janus Guard
+				item2 = color_arr['itemcol']..items[effect_val]['enl']..rcol
 			elseif table.contains(fields,'gil') then
 				gil = effect_val..' gil'
 			end
@@ -138,6 +169,14 @@ function event_action(act)
 			elseif T{158,188,245,324,592,658}:contains(msg_ID) and condensebattle then
 				-- When you miss a WS or JA. Relevant for condensed battle.
 				number = 'Miss'
+			elseif msg_ID == 653 or msg_ID == 654 then
+				status = color_arr['statuscol']..'Immunobreak'..rcol
+			elseif msg_ID == 655 or msg_ID == 656 then
+				status = color_arr['statuscol']..'Completely Resists'..rcol
+			elseif msg_ID == 85 or msg_ID == 284 then
+				status = color_arr['statuscol']..'Resists'..rcol
+			elseif T{75,156,189,248,283,312,323,336,355,408,422,423,425,659}:contains(msg_ID) then
+				status = color_arr['statuscol']..'No Effect'..rcol -- The status code for "No Effect" is 255, so it might actually work without this line
 			end
 		
 			-- Sets the common field "abil" based on the applicable abilities.
@@ -146,15 +185,6 @@ function event_action(act)
 				abil = weapon_skill or ability or spell or item
 			end
 			
-			--elseif msg_ID ~= 0 and number then
-			--	if dialog[msg_ID]['color'] == 'H' and condensebattle then
-			--		if statuses[number] then
-			--			status = color_arr['statuscol']..statuses[number]['english']..rcol
-			--		elseif debugging then
-			--			write('status_debug: '..number)
-			--			status = color_arr['statuscol']..statuses[number]['english']..rcol
-			--		end
-			--	end
 			
 			if msg_ID ~= 0 then
 				if dialog[msg_ID]['color'] == 'M' or dialog[msg_ID]['color'] == 'D' or dialog[msg_ID]['color'] == 'H' or act['targets'][i]['actions'][n]['reaction'] == 11 or act['targets'][i]['actions'][n]['reaction'] == 12 or msg_ID == 31 or msg_ID == 32 or act['category']==6 or act['category']==14 then
@@ -174,7 +204,7 @@ function event_action(act)
 						elseif not actor then
 							prepstr = line_noactor
 						elseif debugging then ---- Can remove once I don't see it anymore ----
-							write(number..' '..abil..' '..target..' '..actor)
+							write((number or '')..' '..(abil or '')..' '..(target or '')..' '..(actor or ''))
 							prepstr = dialog[msg_ID]['english']
 						end
 					else ---- Can remove once I don't see it anymore ----
@@ -193,12 +223,12 @@ function event_action(act)
 			
 			-- Avoid nil field errors using " or ''" with all the gsubs.
 			if prepstr then
-				prepstr = prepstr:gsub('$\123lb\125','\7'):gsub('$\123actor\125',actor or ''):gsub('$\123spell\125',spell or ''):gsub('$\123ability\125',ability or ''):gsub('$\123abil\125',abil or ''):gsub('$\123number\125',number or ''):gsub('$\123weapon_skill\125',weapon_skill or ''):gsub('$\123status\125',status or ''):gsub('$\123item\125',item or ''):gsub('$\123gil\125',gil or '')
+				prepstr = prepstr:gsub('$\123lb\125','\7'):gsub('$\123actor\125',actor or ''):gsub('$\123spell\125',spell or ''):gsub('$\123ability\125',ability or ''):gsub('$\123abil\125',abil or ''):gsub('$\123number\125',number or ''):gsub('$\123weapon_skill\125',weapon_skill or ''):gsub('$\123status\125',status or ''):gsub('$\123item\125',item or ''):gsub('$\123item2\125',item2 or ''):gsub('$\123gil\125',gil or '')
 			end
 			
 			-- Construct the message to be sent out --
 			if prepstr then
-				if aggregate ~= true then
+				if not aggregate then
 					if check_filter(actor_table,party_table,target_table,act['category'],msg) then
 						if dialog[msg_ID]['color'] ~= nil then
 							add_to_chat(colorfilt(dialog[msg_ID]['color'],target_table['id']==party_table['p0']['mob']['id']),string.char(0x1F,0xFE,0x1E,0x01)..prepstr:gsub('$\123target\125',target or '')..string.char(127,49))
@@ -214,15 +244,18 @@ function event_action(act)
 								number = 'Bust!'
 							end
 							persistantmessage = line_roll:gsub('$\123status\125',status or ''):gsub('$\123actor\125',actor or ''):gsub('$\123number\125',number or ''):gsub('$\123abil\125',abil or '')
-						else
+						elseif status then
 							persistantmessage = line_aoebuff:gsub('$\123status\125',status or ''):gsub('$\123actor\125',actor or ''):gsub('$\123abil\125',abil or '')
+						else
+							persistantmessage = line_nonumber:gsub('$\123actor\125',actor or ''):gsub('$\123abil\125',abil or '')
 						end
 					else
 						persistantmessage = prepstr
 					end
-					persistantcolor = dialog[msg_ID]['color']
+					persistantcolor = colorfilt(dialog[msg_ID]['color'],target_table['id']==party_table['p0']['mob']['id'])
 					persistanttarget = target
 					if act['target_count'] == 1 and check_filter(actor_table,party_table,target_table,act['category'],msg) then
+						persistantmessage = persistantmessage:gsub('$\123target\125',persistanttarget)
 						add_to_chat(persistantcolor,persistantmessage)
 					end
 				else
@@ -276,43 +309,40 @@ function event_action(act)
 				end
 			end
 			if add_eff_str ~= nil and check_filter(actor_table,party_table,target_table,act['category'],addmsg) then
-				add_to_chat(colorfilt(dialog[addmsg]['color'],target_table['id']==party_table['p0']['id']),string.char(0x1F,0xFE,0x1E,0x01)..add_eff_str..string.char(127,49))
+				add_to_chat(colorfilt(dialog[addmsg]['color'],target_table['id']==party_table['p0']['mob']['id']),string.char(0x1F,0xFE,0x1E,0x01)..add_eff_str..string.char(127,49))
 			end
 			
 			number = nil
-			if flipped then actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped) end
 			local spkmsg = act['targets'][i]['actions'][n]['spike_effect_message']
 			
 			-- Need to add battlemod battle condensation to this --
 			
 			if act['targets'][i]['actions'][n]['has_spike_effect'] and act['category']==1 and spkmsg ~= 0 then
 				number = act['targets'][i]['actions'][n]['spike_effect_param']
-				if condensebattle then
-					if spkmsg > 0 then
-						if spkmsg == 14 then
-							abil = 'Shadow from Counter'
-						elseif spkmsg == 33 or spkmsg == 606 then
-							abil = 'Counter'
-							actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
-						elseif spkmsg == 592 then
-							abil = 'Counter Missed'
-							actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
-						elseif spkmsg == 536 then
-							abil = 'Retaliates'
-							actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
-						elseif spkmsg == 535 then
-							abil = 'Shadow from Retaliation'
-						else
-							abil = 'Spikes'
-							actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
-						end
-						
-						a,b = string.find(dialog[spkmsg]['english'],'$\123number\125')
-						if a then
-							spike_str = line_full:gsub('$\123actor\125',actor or ''):gsub('$\123target\125',target or ''):gsub('$\123lb\125','\7'):gsub('$\123abil\125',abil or ''):gsub('$\123number\125',number or '')
-						else
-							spike_str = line_nonumber:gsub('$\123actor\125',actor or ''):gsub('$\123target\125',target or ''):gsub('$\123lb\125','\7'):gsub('$\123abil\125',abil or '')
-						end
+				if condensebattle and spkmsg > 0 then
+					if spkmsg == 14 then
+						abil = 'Shadow from Counter'
+					elseif spkmsg == 33 or spkmsg == 606 then
+						abil = 'Counter'
+						actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
+					elseif spkmsg == 592 then
+						abil = 'Counter Missed'
+						actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
+					elseif spkmsg == 536 then
+						abil = 'Retaliates'
+						actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
+					elseif spkmsg == 535 then
+						abil = 'Shadow from Retaliation'
+					else
+						abil = 'Spikes'
+						actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
+					end
+					
+					a,b = string.find(dialog[spkmsg]['english'],'$\123number\125')
+					if a then
+						spike_str = line_full:gsub('$\123actor\125',actor or ''):gsub('$\123target\125',target or ''):gsub('$\123lb\125','\7'):gsub('$\123abil\125',abil or ''):gsub('$\123number\125',number or '')
+					else
+						spike_str = line_nonumber:gsub('$\123actor\125',actor or ''):gsub('$\123target\125',target or ''):gsub('$\123lb\125','\7'):gsub('$\123abil\125',abil or '')
 					end
 				else
 					if spkmsg > 0 then
@@ -320,8 +350,8 @@ function event_action(act)
 					end
 				end
 			end
-			if spike_str ~= nil and check_filter(actor_table,party_table,target_table,spkmsg) then
-				add_to_chat(colorfilt(dialog[spkmsg]['color'],target_table['id']==party_table['p0']['id']),string.char(0x1F,0xFE,0x1E,0x01)..spike_str..string.char(127,49))
+			if spike_str ~= nil and check_filter(actor_table,party_table,target_table,act['category'],spkmsg) then
+				add_to_chat(colorfilt(dialog[spkmsg]['color'],target_table['id']==party_table['p0']['mob']['id']),string.char(0x1F,0xFE,0x1E,0x01)..spike_str..string.char(127,49))
 			end
 			
 			if flipped then actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped) end
@@ -343,7 +373,7 @@ function namecol(player,player_table,party_table)
 	-- Returns a name colored relative to color_arr
 	if not player then 	player = '' end
 	if player_table['is_npc']==true then
-		if player_table['id']%4096>2048 then
+		if player_table['id']%4096>2047 then
 			for i,v in pairs(party_table) do
 				if nf(v['mob'],'pet_index') == player_table['index'] then
 					player = color_arr[i]..player..rcol
@@ -426,6 +456,8 @@ function check_filter(actor_table,party_table,target_table,category,msg)
 		or category == 1 and filter[actor_type]['melee']
 		or category == 2 and filter[actor_type]['ranged']
 		or category == 12 and filter[actor_type]['ranged']
+		or category == 5 and filter[actor_type]['items']
+		or category == 9 and filter[actor_type]['uses']
 		or nf(dialog[msg],'color')=='D' and filter[actor_type]['damage']
 		or nf(dialog[msg],'color')=='M' and filter[actor_type]['misses']
 		or nf(dialog[msg],'color')=='H' and filter[actor_type]['healing']
@@ -438,6 +470,9 @@ function check_filter(actor_table,party_table,target_table,category,msg)
 		if filter[actor_type][target_type]['all']
 		or category == 1 and filter[actor_type][target_type]['melee']
 		or category == 2 and filter[actor_type][target_type]['ranged']
+		or category == 12 and filter[actor_type]['ranged']
+		or category == 5 and filter[actor_type]['items']
+		or category == 9 and filter[actor_type]['uses']
 		or nf(dialog[msg],'color')=='D' and filter[actor_type][target_type]['damage']
 		or nf(dialog[msg],'color')=='M' and filter[actor_type][target_type]['misses']
 		or nf(dialog[msg],'color')=='H' and filter[actor_type][target_type]['healing']
@@ -456,10 +491,10 @@ function party_id(actor_table,party_table)
 	-- Returns "me", "party", "alliance", "others", "monsters", "my_pet", or "other_pets"
 	local partypos, filtertype
 	if actor_table['is_npc']==true then
-		if actor_table['id']%4096 > 2048 then -- Pet check
+		if actor_table['id']%4096 > 2047 then -- Pet check
 			if party_table['p0']['mob']['pet_index'] == actor_table['index'] then
 				filtertype = 'my_pet'
-			elseif party_table['p0']['pet_index'] ~= actor_table['index'] then
+			elseif party_table['p0']['mob']['pet_index'] ~= actor_table['index'] then
 				filtertype = 'other_pets'
 			end
 		elseif filter['monsters'] then
@@ -494,4 +529,14 @@ function fieldsearch(message)
 	fieldarr = {}
 	string.gsub(message,"{(.-)}", function(a) if a ~= '${actor}' and a ~= '${target}' then fieldarr[#fieldarr+1] = a end end)
 	return fieldarr
+end
+
+function ammo_number()
+	local inv = get_items()
+	for i,v in pairs(inv['inventory']) do
+		if v['slot_id'] == 63 then
+			return v['count']
+		end
+	end
+	return nil
 end

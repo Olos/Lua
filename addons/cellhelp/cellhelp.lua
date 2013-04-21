@@ -83,6 +83,9 @@ function settings_create()
 		players[players[i]] = settingtab[set][playernumber]['name']
 		if players[players[i]] == player then
 			player_num = players[i]
+			if player_num == nil or player_num == '' then
+				player_num = 'player1'
+			end
 		end
 	end
 
@@ -150,7 +153,7 @@ function event_addon_command(...)
 end
 
 function event_load()
-	send_command('alias ch lua c cellhelpv2')
+	send_command('alias ch lua c cellhelp')
 	player = get_player()['name']
 	write('CellHelp loaded.  CellHelp Authors: Cerberus.Balloon and Bahamut.Krizz')
 	mode = settingtab["mode"]
@@ -163,20 +166,18 @@ function event_load()
 end 
 
 function event_login()
-	player = get_player()['name']
-
+	settings_create()
 end
 
 function orderlots()
-	lotorder = ""
---	for i,v in pairs(cell_lots) do write(i..' - '..v) end
+	lotorder = " "
 	for i=1, #salvage_cell_name_short  do 
 		if salvage_cell_name_short[i] ~= 'alex' and cell_lots[salvage_cell_name_short[i]] ~= 0 then
 			item = salvage_cell_name_short[i]
-			lotorder = (lotorder..item..': '..cell_lots[item]..' \n')
+			lotorder = (lotorder..item..': '..cell_lots[item]..' \n ')
 	    elseif salvage_cell_name_short[i] == 'alex' and cell_lots[salvage_cell_name_short[i]] ~= 0 then
 	    	item = salvage_cell_name_short[i]
-	    	lotorder = (lotorder..item..' \n')
+	    	lotorder = (lotorder..item..' \n ')
 	    end
 	end
 		--Temporary Item Counter to see if items are registering with filter.
