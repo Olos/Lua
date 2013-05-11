@@ -1,10 +1,8 @@
 function event_action(act)
-	local persistantmessage = ''
-	local persistanttarget = ''
+	local persistantmessage,persistanttarget = '',''
 	local persistantcolor = 1
 	local aggregate = false
 	local eventual_send = false
-	local spell,ability,weapon_skill,item
 	
 	local msg = act['targets'][1]['actions'][1]['message']
 	if agg_messages:contains(msg) and condensebuffs then
@@ -70,11 +68,15 @@ function event_action(act)
 	end
 
 	for i,v in pairs(act['targets']) do
+		--local shadows,parries,misses,hits = 0,0,0,0
+		--local damage,add_eff_damage,counter_damage,spike_damage = 0,0,0,0
+		
 		for n,m in pairs(act['targets'][i]['actions']) do
 			local msg_ID = act['targets'][i]['actions'][n]['message']
 			if not nf(dialog[msg_ID],'english') then return end
 			
 			local prepstr,abil,add_eff_str,spike_str,wsparm,status,number,gil,abil_ID,effect_val
+			local spell,ability,weapon_skill,item
 			
 			local flipped = false
 			local target_table = get_mob_by_id(act['targets'][i]['id'])
@@ -87,7 +89,6 @@ function event_action(act)
 					abil = 'Parries'
 					actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
 				elseif  act['targets'][i]['actions'][n]['reaction'] == 12 then abil = 'Block'
-					actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
 					effect_val = act['targets'][i]['actions'][n]['param']
 				elseif msg_ID == 1 then abil = 'Hit'
 					effect_val = act['targets'][i]['actions'][n]['param']
@@ -96,10 +97,11 @@ function event_action(act)
 					actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
 				elseif msg_ID == 106 then abil = 'Intimidates'
 					actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
-				elseif msg_ID == 31 then
+				elseif msg_ID == 31 then abil = 'Disappears'
 					actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
 					effect_val = act['targets'][i]['actions'][n]['param']
-					abil = 'Disappears'
+				elseif msg_ID == 30 then abil = 'Anticipates'
+					actor,actor_table,target,target_table,flipped = flip(actor,actor_table,target,target_table,flipped)
 				elseif msg_ID == 67 then abil = 'Crit'
 					effect_val = act['targets'][i]['actions'][n]['param']
 				elseif msg_ID == 373 then abil = 'Absorbs'
@@ -117,6 +119,7 @@ function event_action(act)
 				elseif msg_ID == 576 then abil = 'RA Hits Squarely'
 				elseif msg_ID == 577 then abil = 'RA Strikes True'
 				elseif msg_ID == 157 then abil = 'Barrage'
+				elseif msg_ID == 77 then abil = 'Sange'
 				end
 			elseif T{7,8,9}:contains(act['category']) then -- 12 and 10 don't really count because their params are meaningless. 1 and 2 need manual ability sorting
 				abil_ID = act['targets'][i]['actions'][n]['param']
@@ -134,12 +137,12 @@ function event_action(act)
 					spell = 'Magic Burst '..spell
 				end
 				spell = color_arr['spellcol']..spell..rcol
-			elseif table.contains(fields,'item') then
-				item = color_arr['itemcol']..items[abil_ID]['enl']..rcol
 			elseif table.contains(fields,'ability') then
 				ability = jobabilities[abil_ID]['english']
 				if msg_ID == 379 then ability = 'Magic Burst '..ability end
 				ability = color_arr['abilcol']..ability..rcol
+			elseif table.contains(fields,'item') then
+				item = color_arr['itemcol']..items[abil_ID]['enl']..rcol
 			elseif table.contains(fields,'weapon_skill') then
 				if abil_ID > 255 and abil_ID ~= 1531 then -- WZ_RECOVER_ALL is used by chests in Limbus
 					weapon_skill = mabils[abil_ID-256]['english']
@@ -149,26 +152,29 @@ function event_action(act)
 				elseif abil_ID < 256 then
 					weapon_skill = jobabilities[abil_ID+768]['english']
 				end
---				if actor_table['is_npc'] then
---					if act['category'] ~=3 and mabils[abil_ID-256] then
---						if abil_ID ~= 1531 then
---							weapon_skill = mabils[abil_ID-256]['english']
---						end
---					elseif act['category'] == 3 or abil_ID<257 then
---						weapon_skill = jobabilities[abil_ID+768]['english']
---					end
-				if weapon_skill == '.' then
-					weapon_skill = 'Special Attack'
+				if msg_ID == 188 then
+					weapon_skill = weapon_skill..' (Miss)'
+				elseif msg_ID == 189 then
+					weapon_skill = weapon_skill..' (No Effect)'
 				end
 				if actor['is_npc'] then
 					weapon_skill = color_arr['mobwscol']..(weapon_skill or '')..rcol
 				else
 					weapon_skill = color_arr['wscol']..(weapon_skill or '')..rcol
 				end
+			elseif msg_ID == 303 then
+				ability = 'Divine Seal'
+			elseif msg_ID == 304 then
+				ability = 'Elemental Seal'
+			elseif msg_ID == 305 then
+				ability = 'Trick Attack'
+			elseif msg_ID == 311 then
+				ability = 'Cover'
+			elseif msg_ID == 312 then
+				ability = 'Cover (No Effect)'
 			end
 			
-			
-			if abil_ID == 53 then -- Gauge handling
+			if abil_ID == 53 and act['category'] == 6 then -- Gauge handling
 				if msg_ID == 210 then
 					ability = 'Gauge (Cannot charm - '
 				elseif msg_ID == 211 then
@@ -187,8 +193,6 @@ function event_action(act)
 			if table.contains(fields,'status') then
 				if act['targets'][i]['actions'][n]['param'] == 0 or act['targets'][i]['actions'][n]['param'] == 255 then
 					status = color_arr['statuscol']..'No effect'..rcol
---				elseif statuses[act['targets'][i]['actions'][n]['param']] ~= nil then
---					status = color_arr['statuscol']..statuses[act['targets'][i]['actions'][n]['param']]['english']..rcol
 				else
 					status = color_arr['statuscol']..statuses[effect_val]['english']..rcol
 				end
@@ -197,6 +201,8 @@ function event_action(act)
 				if dialog[msg_ID]['units'] and condensebattle then
 					number = number..' '..dialog[msg_ID]['units']
 				end
+			elseif not item and table.contains(fields,'item') then
+				item = color_arr['itemcol']..items[effect_val]['enl']..rcol
 			elseif table.contains(fields,'item2') then -- For when you use an item to obtain items i.e. Janus Guard
 				item2 = color_arr['itemcol']..items[effect_val]['enl']..rcol
 			elseif table.contains(fields,'gil') then
@@ -210,7 +216,7 @@ function event_action(act)
 				target = target..' (stunned)'
 			elseif T{158,188,245,324,592,658}:contains(msg_ID) and condensebattle then
 				-- When you miss a WS or JA. Relevant for condensed battle.
-				number = 'Miss'
+				number = 'Miss' --- This probably doesn't work due to the if a==nil statement below.
 			elseif msg_ID == 653 or msg_ID == 654 then
 				status = color_arr['statuscol']..'Immunobreak'..rcol
 			elseif msg_ID == 655 or msg_ID == 656 then
@@ -229,15 +235,20 @@ function event_action(act)
 			
 			
 			if msg_ID ~= 0 then
-				if dialog[msg_ID]['color'] == 'M' or dialog[msg_ID]['color'] == 'D' or dialog[msg_ID]['color'] == 'H' or act['targets'][i]['actions'][n]['reaction'] == 11 or act['targets'][i]['actions'][n]['reaction'] == 12 or msg_ID == 31 or msg_ID == 32 or act['category']==6 or act['category']==14 then
+				if dialog[msg_ID]['color'] == 'M' or dialog[msg_ID]['color'] == 'D' or dialog[msg_ID]['color'] == 'H' or act['targets'][i]['actions'][n]['reaction'] == 11 or act['targets'][i]['actions'][n]['reaction'] == 12 or msg_ID == 31 or msg_ID == 32 or T{6,7,8,9,14,15}:contains(act['category']) then
 					-- Misses, Damage, Healing, Parrying, Dodge, Guard/Block, and Utsusemi
 					-- Handles for Category 1,2,3,4,6, and 14
 					a,b = string.find(dialog[msg_ID]['english'],'$\123number\125')
-					if a == nil then -- Distinguishes between Status effects and Damage/Healing.
+					if a == nil and type(number) ~= string then -- Distinguishes between Status effects and Damage/Healing.
 						number = nil
 					end
 					if condensebattle then
-						if abil and number and target and actor then
+						if not abil then
+							abil = 'AoE'
+						end
+						if abil == 'Steal' or abil == 'Despoil' or abil == 'Scavenge' or abil == 'Mug' then
+							prepstr = dialog[msg_ID]['english']
+						elseif abil and number and target and actor then
 							prepstr = line_full
 						elseif abil and status and target and actor then
 							prepstr = line_aoebuff
@@ -245,21 +256,12 @@ function event_action(act)
 							prepstr = line_nonumber
 						elseif not actor then
 							prepstr = line_noactor
-						elseif debugging then ---- Can remove once I don't see it anymore ----
-							write((number or '')..' '..(abil or '')..' '..(target or '')..' '..(actor or ''))
-							prepstr = dialog[msg_ID]['english']
 						end
-					else ---- Can remove once I don't see it anymore ----
+					else
 						prepstr = dialog[msg_ID]['english']
 					end
-				elseif dialog[msg_ID] or debugging then -- Shouldn't really be necessary.
+				elseif dialog[msg_ID] then -- Default case?
 					prepstr = dialog[msg_ID]['english']
-				end
-			else
-				if msg_ID ~= 0 and debugging then
-					write('debug4: '..act['category']..' '..dialog[msg_ID]) --- Debug message. Can be removed eventually.
-				elseif act['targets'][i]['actions'][n]['spike_effect_message'] == 0 and debugging then
-					write('debug4: '..act['category'])
 				end
 			end
 			
@@ -271,12 +273,8 @@ function event_action(act)
 			-- Construct the message to be sent out --
 			if prepstr then
 				if not aggregate then
-					if check_filter(actor_table,party_table,target_table,act['category'],msg) then
-						if dialog[msg_ID]['color'] ~= nil then
-							add_to_chat(colorfilt(dialog[msg_ID]['color'],target_table['id']==party_table['p0']['mob']['id']),string.char(0x1F,0xFE,0x1E,0x01)..prepstr:gsub('$\123target\125',target or '')..string.char(127,49))
-						elseif debugging then
-							add_to_chat(1,string.char(0x1F,0xFE,0x1E,0x01)..prepstr:gsub('$\123target\125',target or '')..string.char(127,49))
-						end
+					if check_filter(actor_table,party_table,target_table,act['category'],msg) and dialog[msg_ID]['color'] ~= nil then
+						add_to_chat(colorfilt(dialog[msg_ID]['color'],target_table['id']==party_table['p0']['mob']['id']),string.char(0x1F,0xFE,0x1E,0x01)..prepstr:gsub('$\123target\125',target or '')..string.char(127,49))
 					end
 				elseif i==1 then
 					if condensebattle then
@@ -302,17 +300,13 @@ function event_action(act)
 					end
 				else
 					-- Applies the proper connectors to the target series
-					if i < act['target_count'] then
+					if i < act['target_count'] or commamode then
 						persistanttarget = persistanttarget..', '
 					else
-						if commamode then
-							persistanttarget = persistanttarget..', '
-						else
-							if oxford and act['target_count'] >2 then
-								persistanttarget = persistanttarget..','
-							end
-							persistanttarget = persistanttarget..' and '
-						end	
+						if oxford and act['target_count'] >2 then
+							persistanttarget = persistanttarget..','
+						end
+						persistanttarget = persistanttarget..' and '
 					end
 					persistanttarget = persistanttarget..target
 				end
@@ -323,26 +317,25 @@ function event_action(act)
 			local addmsg = act['targets'][i]['actions'][n]['add_effect_message']
 			
 			if act['targets'][i]['actions'][n]['has_add_effect'] and act['targets'][i]['actions'][n]['add_effect_message'] ~= 0 then
-				if act['category'] == 1 or act['category'] == 2 or act['category'] == 3 or act['category'] == 4 or act['category'] == 11 or debugging then
-					if addmsg == 152 or addmsg == 161 or addmsg == 162 or addmsg == 163 or addmsg == 167 or addmsg == 229 or addmsg == 384 or addmsg == 603 or addmsg == 652 or addmsg > 287 and addmsg < 303 then
+				if act['category'] == 1 or act['category'] == 2 or act['category'] == 3 or act['category'] == 4 or act['category'] == 11 then
+					if T{152,161,162,163,167,229,603,652}:contains(addmsg) or addmsg > 287 and addmsg < 303 or addmsg > 383 and addmsg < 399 then
 						number = act['targets'][i]['actions'][n]['add_effect_param']
 					else
 						number = nf(statuses[act['targets'][i]['actions'][n]['add_effect_param']],'english')
 						status = nf(statuses[act['targets'][i]['actions'][n]['add_effect_param']],'english')
 					end
-					
-					if addmsg > 287 and addmsg < 303 then
-						abil = skillchain_arr[addmsg-287]
-					elseif addmsg > 384 and addmsg < 399 then
-						abil = skillchain_arr[addmsg-384]
-					elseif addmsg ==603 then
-						abil = 'Treasure Hunter Level'
-					else
-						abil = 'Add. Eff.'
-					end
-										
+							
 					if condensebattle then
 						add_eff_str = line_noactor
+						if addmsg > 287 and addmsg < 303 then
+							abil = skillchain_arr[addmsg-287]
+						elseif addmsg > 384 and addmsg < 399 then
+							abil = skillchain_arr[addmsg-384]
+						elseif addmsg ==603 then
+							abil = 'Treasure Hunter Level'
+						else
+							abil = 'Add. Eff.'
+						end
 					else
 						add_eff_str = dialog[addmsg]['english']
 					end
@@ -357,11 +350,9 @@ function event_action(act)
 			number = nil
 			local spkmsg = act['targets'][i]['actions'][n]['spike_effect_message']
 			
-			-- Need to add battlemod battle condensation to this --
-			
 			if act['targets'][i]['actions'][n]['has_spike_effect'] and act['category']==1 and spkmsg ~= 0 then
 				number = act['targets'][i]['actions'][n]['spike_effect_param']
-				if condensebattle and spkmsg > 0 then
+				if condensebattle then
 					if spkmsg == 14 then
 						abil = 'Shadow from Counter'
 					elseif spkmsg == 33 or spkmsg == 606 then
@@ -387,9 +378,7 @@ function event_action(act)
 						spike_str = line_nonumber:gsub('$\123actor\125',actor or ''):gsub('$\123target\125',target or ''):gsub('$\123lb\125','\7'):gsub('$\123abil\125',abil or '')
 					end
 				else
-					if spkmsg > 0 then
-						spike_str = dialog[spkmsg]['english']:gsub('$\123actor\125',actor or ''):gsub('$\123target\125',target or ''):gsub('$\123lb\125','\7'):gsub('$\123number\125',number or '')
-					end
+					spike_str = dialog[spkmsg]['english']:gsub('$\123actor\125',actor or ''):gsub('$\123target\125',target or ''):gsub('$\123lb\125','\7'):gsub('$\123number\125',number or '')
 				end
 			end
 			if spike_str ~= nil and check_filter(actor_table,party_table,target_table,act['category'],spkmsg) then

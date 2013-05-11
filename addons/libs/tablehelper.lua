@@ -31,8 +31,9 @@ _meta.N.__class = 'Nil'
 -- t = T{...} for explicit declaration.
 -- t = T(regular_table) to cast to a T-table.
 function T(t)
+	local res
 	if class(t) == 'Set' then
-		local res = T{}
+		res = T{}
 		
 		local key = 1
 		for el in pairs(t) do
@@ -44,7 +45,7 @@ function T(t)
 			key = key + 1
 		end
 	elseif class(t) == 'List' then
-		local res = T{}
+		res = T{}
 		
 		local key = 1
 		for _, el in ipairs(t) do
@@ -380,7 +381,7 @@ function table.reverse(t)
 end
 
 -- Returns an array removed of all duplicates.
--- DEPRECATED: User S(t) instead
+-- DEPRECATED: Use S(t) instead
 function table.set(t)
 	local seen = {}
 	local res = {}
