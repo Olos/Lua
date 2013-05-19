@@ -30,7 +30,7 @@
 	<dtd id="28" english="${actor} uses a ${item}." color="90"/>
 	<dtd id="29" english="${actor} is paralyzed." color="122"/>
 	<dtd id="30" english="${target} anticipates the attack." color="29"/>
-	<dtd id="31" english="${number} of ${target}'s shadows absorbs the damage and disappears." color="29" units="Shadow"/>
+	<dtd id="31" english="${number} of ${actor}'s shadows absorbs the damage and disappears." color="29" units="Shadow"/>
 	<dtd id="32" english="${target} dodges the attack." color="29"/>
 	<dtd id="33" english="${actor}'s attack is countered by ${target}.${lb}${actor} takes ${number} points of damage." color="D"/>
 	<dtd id="34" english="${actor} does not have enough MP to cast ${spell}." color="122"/>
@@ -68,8 +68,8 @@
 	<dtd id="66" english="Debug: Resisted spell!" color="R"/>
 	<dtd id="67" english="${actor} scores a critical hit!${lb}${target} takes ${number} points of damage." color="D"/>
 	<dtd id="68" english="Debug: Casting interrupted!" color="1"/>
-	<dtd id="69" english="${target} blocks ${actor}'s attack with his shield." color="1"/>
-	<dtd id="70" english="${target} parries ${actor}'s attack with his weapon." color="29"/>
+	<dtd id="69" english="${actor} blocks ${target}'s attack with his shield." color="1"/>
+	<dtd id="70" english="${actor} parries ${target}'s attack with his weapon." color="29"/>
 	<dtd id="71" english="${actor} cannot perform that action." color="122"/>
 	<dtd id="72" english="That action cannot be performed on ${target}." color="1"/>
 	<dtd id="73" english="Debug: ${target}'s status is now ${status}." color="1"/>
