@@ -62,7 +62,7 @@ chat: {
         exclamation: \x81\x49,
         macron:      \x81\x50, // ¯
         zero:        \x81\x5A,
-        bar:         \x81\x5B, // ?
+        bar:         \x81\x5B, // ―
         emdash:      \x81\x5C, // —
         endash:      \x81\x5D, // –
         slash:       \x81\x5E,
@@ -72,8 +72,8 @@ chat: {
 
         // Typography
         tilde:       \x81\x3E, // ~
-        wave:        \x81\x60, // ?
-        ditto:       \x81\x56, // ?
+        wave:        \x81\x60, // 〜
+        ditto:       \x81\x56, // 〃
         amp:         \x81\x95,
         asterisk:    \x81\x96,
         at:          \x81\x97,
@@ -84,9 +84,9 @@ chat: {
         pipe:        \x81\x62, // |
         hash:        \x81\x94,
         section:     \x81\x98, // §
-        ref:         \x81\xA6, // ?
-        post:        \x81\xA7, // ?
-        tie:         \x81\xD1, // ?
+        ref:         \x81\xA6, // ※
+        post:        \x81\xA7, // 〶
+        tie:         \x81\xD1, // ⁀
         para:        \x81\xF7, // ¶
 
         // Quotes
@@ -98,22 +98,22 @@ chat: {
         // Brackets
         lpar:        \x81\x69, // (
         rpar:        \x81\x6A, // )
-        ltort:       \x81\x6B, // ?
-        rtort:       \x81\x6C, // ?
+        ltort:       \x81\x6B, // 〔
+        rtort:       \x81\x6C, // 〕
         lbrack:      \x81\x6D, // [
         rbrack:      \x81\x6E, // ]
         lbrace:      \x81\x6F, // {
         rbrace:      \x81\x70, // }
-        lang:        \x81\x71, // <
-        rang:        \x81\x72, // >
-        ldangle:     \x81\x73, // «
-        rdangle:     \x81\x74, // »
-        lcorner:     \x81\x75, // ?
-        rcorner:     \x81\x76, // ?
-        lwcorner:    \x81\x77, // ?
-        rwcorner:    \x81\x78, // ?
-        lblent:      \x81\x79, // ?
-        rblent:      \x81\x7A, // ?
+        lang:        \x81\x71, // 〈
+        rang:        \x81\x72, // 〉
+        ldangle:     \x81\x73, // 《
+        rdangle:     \x81\x74, // 》
+        lcorner:     \x81\x75, // 「
+        rcorner:     \x81\x76, // 」
+        lwcorner:    \x81\x77, // 『
+        rwcorner:    \x81\x78, // 』
+        lblent:      \x81\x79, // 【
+        rblent:      \x81\x7A, // 】
         laquo:       \x85\x6B, // «
         raquo:       \x85\x7B, // »
 
@@ -124,47 +124,47 @@ chat: {
         times:       \x81\x7E, // ×
         div:         \x81\x80, // ÷
         eq:          \x81\x81, // =
-        neq:         \x81\x82, // ?
+        neq:         \x81\x82, // ≠
         lt:          \x81\x83,
         gt:          \x81\x84,
-        leq:         \x81\x85, // ?
-        geq:         \x81\x86, // ?
-        ll:          \x81\xD6, // «
-        gg:          \x81\xD7, // »
-        root:        \x81\xD8, // v
-        inf:         \x81\x87, // 8
-        prop:        \x81\xE5, // ?
+        leq:         \x81\x85, // ≦
+        geq:         \x81\x86, // ≧
+        ll:          \x81\xD6, // ≪
+        gg:          \x81\xD7, // ≫
+        root:        \x81\xD8, // √
+        inf:         \x81\x87, // ∞
+        prop:        \x81\xE5, // ∝
         ninf:        \x81\xD9, // open infinity in the middle
-        nearlyeq:    \x81\xD5, // ?
+        nearlyeq:    \x81\xD5, // ≓
 
         // Math (Sets)
-        in:          \x81\xAC, // ?
-        ni:          \x81\xAD, // ?
-        subseteq:    \x81\xAE, // ?
-        supseteq:    \x81\xB0, // ?
-        subset:      \x81\xB1, // ?
-        supset:      \x81\xB2, // ?
-        union:       \x81\xB3, // ?
-        intersect:   \x81\xB4, // n
+        in:          \x81\xAC, // ∈
+        ni:          \x81\xAD, // ∋
+        subseteq:    \x81\xAE, // ⊆
+        supseteq:    \x81\xB0, // ⊇
+        subset:      \x81\xB1, // ⊂
+        supset:      \x81\xB2, // ⊃
+        union:       \x81\xB3, // ∪
+        intersect:   \x81\xB4, // ∩
 
         // Math (Analysis)
-        nabla:       \x81\xD3, // ?
-        integral:    \x81\xE7, // ?
-        dintegral:   \x81\xE8, // ??
+        nabla:       \x81\xD3, // ∇
+        integral:    \x81\xE7, // ∫
+        dintegral:   \x81\xE8, // ∫∫
 
         // Math (Logical)
-        therefore:   \x81\x88, // ?
-        bc:          \x81\xE6, // ?
-        min:         \x81\xB5, // ?
-        max:         \x81\xB6, // ?
+        therefore:   \x81\x88, // ∴
+        bc:          \x81\xE6, // ∵
+        min:         \x81\xB5, // ∧
+        max:         \x81\xB6, // ∨
         neg:         \x81\xB7, // ¬
-        implies:     \x81\xC3, // ?
-        iff:         \x81\xC4, // ?
-        foreach:     \x81\xC5, // ?
-        exists:      \x81\xC6, // ?
-        bot:         \x81\xD0, // ?
-        part:        \x81\xD2, // ?
-        equiv:       \x81\xD4, // =
+        implies:     \x81\xC3, // ⇒
+        iff:         \x81\xC4, // ⇔
+        foreach:     \x81\xC5, // ∀
+        exists:      \x81\xC6, // ∃
+        bot:         \x81\xD0, // ⊥
+        part:        \x81\xD2, // ∂
+        equiv:       \x81\xD4, // ≡
 
         // Math (Fractions)
         1div4:       \x85\x7C, // ¼
@@ -173,15 +173,15 @@ chat: {
 
         // Math (Geometry)
         degree:      \x81\x8B, // °
-        arcmin:      \x81\x8C, // '
-        arcsec:      \x81\x8D, // ?
-        angle:       \x81\xC7, // ?
-        rangle:      \x87\x98, // ?
-        lrtriangle:  \x87\x99, // ?
+        arcmin:      \x81\x8C, // ′
+        arcsec:      \x81\x8D, // ″
+        angle:       \x81\xC7, // ∠
+        rangle:      \x87\x98, // ∟
+        lrtriangle:  \x87\x99, // ◿
 
         // Polygons
-        bstar:       \x81\x99, // ?
-        wstar:       \x81\x9A, // ?
+        bstar:       \x81\x99, // ★
+        wstar:       \x81\x9A, // ☆
         brhombus:    \x81\x9E, // black rhombus
         wrhombus:    \x81\x9F, // white rhombus
         bsquare:     \x81\xA0, // black square
@@ -197,10 +197,10 @@ chat: {
         circlejot:   \x81\x9D, // circle in circle
 
         // Arrows
-        rarr:        \x81\xA8, // ?
-        larr:        \x81\xA9, // ?
-        uarr:        \x81\xAA, // ?
-        darr:        \x81\xAB, // ?
+        rarr:        \x81\xA8, // →
+        larr:        \x81\xA9, // ←
+        uarr:        \x81\xAA, // ↑
+        darr:        \x81\xAB, // ↓
 
         // Financial
         dollar:      \x81\x90, // $
@@ -210,13 +210,13 @@ chat: {
         yen:         \x85\x65, // ¥
 
         // Musical
-        sharp:       \x81\xEB, // ?
-        flat:        \x81\xEC, // ?
-        note:        \x81\xED, // ?
+        sharp:       \x81\xEB, // ♯
+        flat:        \x81\xEC, // ♭
+        note:        \x81\xED, // ♪
 
         // Misc
-        male:        \x81\x89, // ?
-        female:      \x81\x8A, // ?
+        male:        \x81\x89, // ♂
+        female:      \x81\x8A, // ♀
         percent:     \x81\x93,
         permil:      \x81\xEA, // ‰
         circle:      \x81\xF8,
@@ -339,28 +339,28 @@ chat: {
         omega:       \x83\xD6,
 
         // lines
-        hline:       \x84\x92, // -
-        vline:       \x84\x93, // ¦
-        tl:          \x84\x94, // +
-        tr:          \x84\x95, // +
-        br:          \x84\x96, // +
-        bl:          \x84\x97, // +
-        left:        \x84\x98, // +
-        top:         \x84\x99, // -
-        right:       \x84\x9A, // ¦
-        bottom:      \x84\x9B, // -
-        middle:      \x84\x9C, // +
-        bhline:      \x84\xAA, // -
-        bvline:      \x84\xAB, // ¦
-        btl:         \x84\xAB, // +
-        btr:         \x84\xAC, // +
-        bbr:         \x84\xAD, // +
-        bbl:         \x84\xAE, // +
-        bleft:       \x84\xB0, // +
-        btop:        \x84\xB1, // -
-        bright:      \x84\xB2, // ¦
-        bbottom:     \x84\xB3, // -
-        bmiddle:     \x84\xB4, // +
+        hline:       \x84\x92, // ─
+        vline:       \x84\x93, // │
+        tl:          \x84\x94, // ┌
+        tr:          \x84\x95, // ┐
+        br:          \x84\x96, // ┘
+        bl:          \x84\x97, // └
+        left:        \x84\x98, // ├
+        top:         \x84\x99, // ┬
+        right:       \x84\x9A, // ┤
+        bottom:      \x84\x9B, // ┴
+        middle:      \x84\x9C, // ┼
+        bhline:      \x84\xAA, // ─
+        bvline:      \x84\xAB, // │
+        btl:         \x84\xAB, // ┌
+        btr:         \x84\xAC, // ┐
+        bbr:         \x84\xAD, // ┘
+        bbl:         \x84\xAE, // └
+        bleft:       \x84\xB0, // ├
+        btop:        \x84\xB1, // ┬
+        bright:      \x84\xB2, // ┤
+        bbottom:     \x84\xB3, // ┴
+        bmiddle:     \x84\xB4, // ┼
 
         // sup numbers 1-4
         sup0:        \x85\x7A,
