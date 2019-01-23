@@ -1,26 +1,32 @@
 --[[
-Functions that facilitate loading, parsing and storing of config files.
+    Functions that facilitate loading, parsing, manipulating and storing of config files.
 ]]
 
 _libs = _libs or {}
-_libs.config = true
-_libs.logger = _libs.logger or require 'logger'
-_libs.tablehelper = _libs.tablehelper or require 'tablehelper'
-_libs.stringhelper = _libs.stringhelper or require 'stringhelper'
-local xml = require 'xml'
-_libs.xml = _libs.xml or (xml ~= nil)
-local files = require 'filehelper'
-_libs.filehelper = _libs.filehelper or (files ~= nil)
 
-local config = T(config) or T{}
-local file = files.new()
-local original = T{['global'] = T{}}
-local chars = T{}
-local comments = T{}
+require('tables')
+require('sets')
+require('lists')
+require('strings')
 
---[[
-	Local functions
-]]
+local table, set, list, string = _libs.tables, _libs.sets, _libs.lists, _libs.strings
+local xml = require('xml')
+local files = require('files')
+local json = require('json')
+
+local config = {}
+
+_libs.config = config
+
+local error = error or print+{'Error:'}
+local warning = warning or print+{'Warning:'}
+local notice = notice or print+{'Notice:'}
+local log = log or print
+
+-- Map for different config loads.
+local settings_map = T{}
+
+--[[ Local functions ]]
 
 local parse
 local merge
@@ -30,345 +36,478 @@ local nest_xml
 local table_diff
 
 -- Loads a specified file, or alternatively a file 'settings.xml' in the current addon/data folder.
--- Writes all configs to _config.
-function config.load(filename, confdict, overwrite)
-	if type(filename) == 'table' then
-		confdict, filename, overwrite = filename, nil, confdict
-	elseif type(filename) == 'boolean' then
-		filename, overwrite = nil, filename
-	elseif type(confdict) == 'boolean' then
-		confdict, overwrite = nil, confdict
-	end
-	confdict = T(confdict):copy()
-	overwrite = overwrite or false
-	
-	local confdict_mt = getmetatable(confdict)
-	confdict = setmetatable(confdict, {__index = function(t, x) if config[x] ~= nil then return config[x] else return confdict_mt.__index[x] end end})
-	
-	-- Load addon config file (Windower/addon/<addonname>/data/settings.xml).
-	local filepath = filename or files.check('data/settings.xml')
-	if filepath == nil then
-		file:set(filename or 'data/settings.xml', true)
-		original['global'] = confdict:copy()
-		confdict:save()
-		return confdict
-	end
-	file:set(filepath)
+function config.load(filepath, defaults)
+    if type(filepath) ~= 'string' then
+        filepath, defaults = 'data/settings.xml', filepath
+    end
 
-	local err
-	confdict, err = parse(file, confdict, overwrite)
+    local confdict_mt = getmetatable(defaults) or _meta.T
+    local settings = setmetatable(table.copy(defaults or {}), {__class = 'Settings', __index = function(t, k)
+        if config[k] ~= nil then
+            return config[k]
+        end
 
-	if err ~= nil then
-		error(err)
-	end
-	
-	collectgarbage()
-	
-	return confdict
+        return confdict_mt.__index[k]
+    end})
+
+    -- Settings member variables, in separate struct
+    local meta = {}
+    meta.file = files.new(filepath, true)
+    meta.original = T{global = table.copy(settings)}
+    meta.chars = S{}
+    meta.comments = {}
+    meta.refresh = T{}
+    meta.cdata = S{}
+
+    settings_map[settings] = meta
+
+    -- Load addon config file (Windower/addon/<addonname>/data/settings.xml).
+    if not meta.file:exists() then
+        config.save(settings, 'all')
+    end
+
+    return parse(settings)
+end
+
+-- Reloads the settings for the provided table. Needs to be the same table that was assigned to with config.load.
+function config.reload(settings)
+    if not settings_map[settings] then
+        error('Config reload error: unknown settings table.')
+        return
+    end
+
+    parse(settings)
+
+    for t in settings_map[settings].refresh:it() do
+        t.fn(settings, unpack(t.args))
+    end
 end
 
 -- Resolves to the correct parser and calls the respective subroutine, returns the parsed settings table.
-function parse(file, confdict, update)
-	local parsed = T{}
-	local err
-	if file.path:endswith('.json') then
-		parsed = json.read(file)
-	elseif file.path:endswith('.xml') then
-		parsed, err = xml.read(file)
-		if parsed == nil then
-			if err ~= nil then
-				error(err)
-			else
-				error('XML error: Unkown error.')
-			end
-			return T{}
-		end
-		parsed = settings_table(parsed, confdict)
-	end
-	
-	-- Determine all characters found in the settings file.
-	chars = parsed:keyset():filter(-functools.equals('global'))
-	original = T{}
-	
-	if update or confdict:isempty() then
-		for _, char in ipairs(T{'global'}+chars) do
-			original[char] = confdict:copy():update(parsed[char], true)
-		end
-		return confdict:update(parsed['global']:update(parsed[get_player()['name']:lower()], true), true)
-	end
-	
-	-- Update the global settings with the per-player defined settings, if they exist. Save the parsed value for later comparison.
-	for _, char in ipairs(T{'global'}+chars) do
-		original[char] = merge(confdict:copy(), parsed[char], char)
-	end
-	
-	return merge(confdict, parsed['global']:update(parsed[get_player()['name']:lower()], true))
+function parse(settings)
+    local parsed = T{}
+    local err
+    local meta = settings_map[settings]
+
+    if meta.file.path:endswith('.json') then
+        parsed = json.read(meta.file)
+
+    elseif meta.file.path:endswith('.xml') then
+        parsed, err = xml.read(meta.file)
+
+        if not parsed then
+            error(err or 'XML error: Unknown error.')
+            return settings
+        end
+
+        parsed = settings_table(parsed, settings)
+    end
+
+    -- Determine all characters found in the settings file.
+    meta.chars = parsed:keyset() - S{'global'}
+    meta.original = T{}
+
+    if table.empty(settings) then
+        for char in (meta.chars + S{'global'}):it() do
+            meta.original[char] = table.update(table.copy(settings), parsed[char], true)
+        end
+
+        local full_parsed = parsed.global
+        local player = windower.ffxi.get_player()
+        if player then
+            full_parsed = full_parsed:update(parsed[player.name:lower()], true)
+        end
+
+        return settings:update(full_parsed, true)
+    end
+
+    -- Update the global settings with the per-player defined settings, if they exist. Save the parsed value for later comparison.
+    for char in (meta.chars + S{'global'}):it() do
+        meta.original[char] = merge(table.copy(settings), parsed[char], char)
+    end
+    for char in meta.chars:it() do
+        meta.original[char] = table_diff(meta.original.global, meta.original[char]) or T{}
+    end
+
+    local full_parsed = parsed.global
+
+    local player = windower.ffxi.get_player()
+    if player then
+        full_parsed = full_parsed:update(parsed[player.name:lower()], true)
+    end
+
+    return merge(settings, full_parsed)
 end
 
 -- Merges two tables like update would, but retains type-information and tries to work around conflicts.
 function merge(t, t_merge, path)
-	if t_merge == nil then
-		return t
-	end
-	
-	path = (type(path) == 'string' and T{path}) or path
+    path = type(path) == 'string' and T{path} or path
 
-	local oldval
-	local err
-	for key, val in pairs(t_merge) do
-		err = false
-		oldval = rawget(t, key)
-		if type(oldval) == 'table' and type(val) == 'table' then
-			local res = merge(oldval, val, path and path:copy()+key or nil)
-			t[key] = setmetatable(res, getmetatable(res) or _meta.T)
-		elseif type(oldval) ~= type(val) then
-			if type(oldval) == 'table' then
-				if type(val) == 'string' then
-					local res = list.map(val:split(','), string.trim)
-					if class and class(oldval) == 'Set' then
-						res = S(res)
-					elseif class and class(oldval) == 'Table' then
-						res = T(res)
-					end
-					t[key] = res
-				else
-					err = true
-				end
-			elseif type(oldval) == 'number' then
-				local testdec = tonumber(val)
-				local testhex = tonumber(val, 16)
-				if testdec then
-					t[key] = testdec
-				elseif testhex then
-					t[key] = testhex
-				else
-					err = true
-				end
-			elseif type(oldval) == 'boolean' then
-				if val == 'true' then
-					t[key] = true
-				elseif val == 'false' then
-					t[key] = false
-				else
-					err = true
-				end
-			elseif type(oldval) == 'string' then
-				t[key] = val
-			else
-				err = true
-			end
-		else
-			t[key] = val
-		end
-		
-		if err then
-			if path then
-				notice('Could not safely merge values for \''..path:concat('/')..'/'..key..'\', '..type(oldval)..' expected (default: '..tostring(oldval)..'), got '..type(val)..' ('..tostring(val)..').')
-			end
-			t[key] = val
-		end
-	end
+    local keys = {}
+    for key in pairs(t) do
+        keys[tostring(key):lower()] = key
+    end
 
-	return t
+    if not t_merge then
+        return t
+    end
+    
+    for lkey, val in pairs(t_merge) do
+        local key = keys[lkey:lower()]
+        if not key then
+            if type(val) == 'table' then
+                t[lkey] = setmetatable(table.copy(val), getmetatable(val) or _meta.T)
+            else
+                t[lkey] = val
+            end
+
+        else
+            local err = false
+            local oldval = rawget(t, key)
+            local oldtype = type(oldval)
+
+            if oldtype == 'table' and type(val) == 'table' then
+                t[key] = merge(oldval, val, path and path:copy() + key or nil)
+
+            elseif oldtype ~= type(val) then
+                if oldtype == 'table' then
+                    if type(val) == 'string' then
+                        -- Single-line CSV parser, can possible refactor this to tables.lua
+                        local res = {}
+                        local current = ''
+                        local quote = false
+                        local last
+                        for c in val:gmatch('.') do
+                            if c == ',' and not quote then
+                                res[#res + 1] = current
+                                current = ''
+                                last = nil
+                            elseif c == '"' then
+                                if last == '"' then
+                                    current = current .. c
+                                    last = nil
+                                else
+                                    last = '"'
+                                end
+
+                                quote = not quote
+                            else
+                                current = current .. c
+                                last = c
+                            end
+                        end
+                        res[#res + 1] = current
+
+                        -- TODO: Remove this after a while, not standard compliant
+                        -- Currently needed to not mess up existing settings
+                        res = table.map(res, string.trim)
+
+                        if class then
+                            if class(oldval) == 'Set' then
+                                res = S(res)
+                            elseif class(oldval) == 'List' then
+                                res = L(res)
+                            elseif class(oldval) == 'Table' then
+                                res = T(res)
+                            end
+                        end
+                        t[key] = res
+
+                    else
+                        err = true
+
+                    end
+
+                elseif oldtype == 'number' then
+                    local testdec = tonumber(val)
+                    local testhex = tonumber(val, 16)
+                    if testdec then
+                        t[key] = testdec
+                    elseif testhex then
+                        t[key] = testhex
+                    else
+                        err = true
+                    end
+
+                elseif oldtype == 'boolean' then
+                    if val == 'true' then
+                        t[key] = true
+                    elseif val == 'false' then
+                        t[key] = false
+                    else
+                        err = true
+                    end
+
+                elseif oldtype == 'string' then
+                    if type(val) == 'table' and not next(val) then
+                        t[key] = ''
+                    else
+                        t[key] = val
+                        err = true
+                    end
+
+                else
+                    err = true
+                end
+
+            else
+                t[key] = val
+            end
+
+            if err then
+                if path then
+                    warning('Could not safely merge values for \'%s/%s\', %s expected (default: %s), got %s (%s).':format(path:concat('/'), key, class(oldval), tostring(oldval), class(val), tostring(val)))
+                end
+                t[key] = val
+            end
+        end
+    end
+
+    return t
 end
 
 -- Parses a settings struct from a DOM tree.
-function settings_table(node, confdict, key)
-	confdict = confdict or T{}
-	key = key or 'settings'
-	
-	local t = T{}
-	if node.type ~= 'tag' then
-		return t
-	end
-	
-	if not node.children:all(function (n) return n.type == 'tag' or n.type == 'comment' end) and not (#node.children == 1 and node.children[1].type == 'text') then
-		error('Malformatted settings file.')
-		return t
-	end
-	
-	if node.children:length() == 1 and node.children[1].type == 'text' then
-		local val = node.children[1].value
-		if val:lower() == 'false' then
-			return false
-		elseif val:lower() == 'true' then
-			return true
-		end
-		
-		local num = tonumber(val)
-		if num ~= nil then
-			return num
-		end
-		
-		return val
-	end
-	
-	for _, child in ipairs(node.children) do
-		if child.type == 'comment' then
-			comments[key] = child.value
-		elseif child.type == 'tag' then
-			key = child.name:lower()
-			local childdict
-			if confdict:containskey(key) then
-				childdict = confdict:copy()
-			else
-				childdict = confdict
-			end
-			t[child.name:lower()] = settings_table(child, childdict, key)
-		end
-	end
-	
-	return t
+function settings_table(node, settings, key, meta)
+    settings = settings or T{}
+    key = key or 'settings'
+    meta = meta or settings_map[settings]
+
+    local t = T{}
+    if node.type ~= 'tag' then
+        return t
+    end
+
+    if not node.children:all(function(n)
+        return n.type == 'tag' or n.type == 'comment'
+    end) and not (#node.children == 1 and node.children[1].type == 'text') then
+        error('Malformatted settings file.')
+        return t
+    end
+
+    -- TODO: Type checking necessary? merge should take care of that.
+    if #node.children == 1 and node.children[1].type == 'text' then
+        local val = node.children[1].value
+        if node.children[1].cdata then
+            meta.cdata:add(key)
+            return val
+        end
+
+        if val:lower() == 'false' then
+            return false
+        elseif val:lower() == 'true' then
+            return true
+        end
+
+        local num = tonumber(val)
+        if num ~= nil then
+            return num
+        end
+
+        return val
+    end
+
+    for child in node.children:it() do
+        if child.type == 'comment' then
+            meta.comments[key] = child.value:trim()
+        elseif child.type == 'tag' then
+            key = child.name:lower()
+            local childdict
+            if table.containskey(settings, key) then
+                childdict = table.copy(settings)
+            else
+                childdict = settings
+            end
+            t[child.name:lower()] = settings_table(child, childdict, key, meta)
+        end
+    end
+
+    return t
 end
 
 -- Writes the passed config table to the spcified file name.
--- char defaults to get_player()['name']. Set to "all" to apply to all characters.
+-- char defaults to windower.ffxi.get_player().name. Set to "all" to apply to all characters.
 function config.save(t, char)
-	char = (char or get_player()['name']):lower()
-	if char == 'all' then
-		char = 'global'
-	elseif not chars:contains(char) then
-		chars:append(char)
-		original[char] = T{}
-	end
-	
-	original[char]:update(t)
-	
-	if char == 'global' then
-		original = original:filterkey('global')
-	else
-		original[char] = table_diff(original['global'], original[char]) or T{}
-		
-		if original[char]:isempty() then
-			original[char] = nil
-			chars:delete(char)
-		end
-	end
-	
-	file:write(settings_xml(original))
+    if char ~= 'all' and not windower.ffxi.get_info().logged_in then
+        return
+    end
+
+    char = (char or windower.ffxi.get_player().name):lower()
+    local meta = settings_map[t]
+
+    if char == 'all' then
+        char = 'global'
+    elseif char ~= 'global' and not meta.chars:contains(char) then
+        meta.chars:add(char)
+        meta.original[char] = T{}
+    end
+
+    meta.original[char]:update(t)
+
+    if char == 'global' then
+        meta.original = T{global = meta.original.global}
+        meta.chars = S{}
+    else
+        meta.original.global:amend(meta.original[char], true)
+        meta.original[char] = table_diff(meta.original.global, meta.original[char]) or T{}
+
+        if meta.original[char]:empty(true) then
+            meta.original[char] = nil
+            meta.chars:remove(char)
+        end
+    end
+
+    meta.file:write(settings_xml(meta))
 end
 
 -- Returns the table containing only elements from t_new that are different from t and not nil.
 function table_diff(t, t_new)
-	local res = T{}
-	local cmp
-	
-	for key, val in pairs(t_new) do
-		cmp = t[key]
-		if cmp ~= nil then
-			if type(cmp) ~= type(val) then
-				warning('Mismatched setting types for key \''..key..'\':', type(cmp), type(val))
-			else
-				if type(val) == 'table' then
-					val = T(val)
-					cmp = T(cmp)
-					if val:isarray() and cmp:isarray() then
-						if not val:equals(cmp) then
-							res[key] = val
-						end
-					else
-						res[key] = table_diff(cmp, val)
-					end
-				elseif cmp ~= val then
-					res[key] = val
-				end
-			end
-		end
-	end
-	
-	if res:isempty() then
-		return nil
-	end
-	
-	return res
+    local res = T{}
+    local cmp
+
+    for key, val in pairs(t_new) do
+        cmp = t[key]
+        if cmp ~= nil then
+            if type(cmp) ~= type(val) then
+                warning('Mismatched setting types for key \''..key..'\':', type(cmp), type(val))
+            else
+                if type(val) == 'table' then
+                    if class(val) == 'Set' or class(val) == 'List' then
+                        if not cmp:equals(val) then
+                            res[key] = val
+                        end
+                    elseif table.isarray(val) and table.isarray(cmp) then
+                        if not table.equals(cmp, val) then
+                            res[key] = val
+                        end
+                    else
+                        res[key] = table_diff(cmp, val)
+                    end
+                elseif cmp ~= val then
+                    res[key] = val
+                end
+            end
+        end
+    end
+
+    return not table.empty(res) and res or nil
 end
 
 -- Converts a settings table to a XML representation.
-function settings_xml(settings)
-	local str = '<?xml version="1.1" ?>\n'
-	str = str..'<settings>\n'
-	
-	chars = settings:keyset():filter(-functools.equals('global')):sort()
-	for _, char in ipairs(T{'global'}+chars) do
-		if char == 'global' and comments['settings'] ~= nil then
-			str = str..'\t<!--\n'
-			local comment_lines = comments['settings']:split('\n')
-			for line, comment in ipairs(comment_lines) do
-				if line < #comment_lines then
-					str = str..'\t\t'..comment:trim()..'\n'
-				end
-			end
-			str = str..'\t-->\n'
-		end
-		str = str..'\t<'..char..'>\n'
-		str = str..nest_xml(settings[char], 2)
-		str = str..'\t</'..char..'>\n'
-	end
-	
-	str = str..'</settings>\n'
-	return str
+function settings_xml(meta)
+    local lines = L{}
+    lines:append('<?xml version="1.1" ?>')
+    lines:append('<settings>')
+
+    local chars = (meta.original:keyset() - S{'global'}):sort()
+    for char in (L{'global'} + chars):it() do
+        if char == 'global' and meta.comments.settings then
+            lines:append('    <!--')
+            local comment_lines = meta.comments.settings:split('\n')
+            for comment in comment_lines:it() do
+                lines:append('        %s':format(comment:trim()))
+            end
+
+            lines:append('    -->')
+        end
+
+        lines:append('    <%s>':format(char))
+        lines:append(nest_xml(meta.original[char], meta))
+        lines:append('    </%s>':format(char))
+    end
+
+    lines:append('</settings>')
+    lines:append('')
+    return lines:concat('\n')
 end
 
 -- Converts a table to XML without headers using appropriate indentation and comment spacing. Used in settings_xml.
-function nest_xml(t, indentlevel)
-	indentlevel = indentlevel or 0
-	local indent = ('\t'):rep(indentlevel)
-	
-	local inlines = T{}
-	local fragments = T{}
-	local maxlength = 0		-- For proper comment indenting
-	keys = t:sort():keyset()
-	local val
-	for _, key in ipairs(keys) do
-		val = rawget(t, key)
-		if type(val) == 'table' and not T(val):isarray() then
-			fragments:append(indent..'<'..key..'>\n')
-			if comments[key] ~= nil then
-				local c = ('<!-- '..comments[key]:trim()..' -->'):split('\n')
-				local pre = ''
-				for cstr in c.it() do
-					fragments:append(indent..pre..cstr:trim()..'\n')
-					pre = '\t '
-				end
-			end
-			fragments:append(nest_xml(val, indentlevel + 1))
-			fragments:append(indent..'</'..key..'>\n')
-		else
-			if type(val) == 'table' then
-				val = T(val):sort():format('csv')
-			end
-			val = tostring(val)
-			if val == '' then
-				fragments:append(indent..'<'..key..' />')
-			else
-				fragments:append(indent..'<'..key..'>'..val..'</'..key..'>')
-			end
-			local length = fragments:last():length() - indent:length()
-			if length > maxlength then
-				maxlength = length
-			end
-			inlines[fragments:length()] = key
-		end
-	end
-	
-	for frag_key, key in pairs(inlines) do
-		if rawget(comments, key) ~= nil then
-			fragments[frag_key] = fragments[frag_key]..(' '):rep(maxlength - fragments[frag_key]:trim():length() + 1)..'<!--'..comments[key]..'-->'
-		end
-		
-		fragments[frag_key] = fragments[frag_key]..'\n'
-	end
-	
-	return fragments:concat()
+function nest_xml(t, meta, indentlevel)
+    indentlevel = indentlevel or 2
+    local indent = (' '):rep(4*indentlevel)
+
+    local inlines = T{}
+    local fragments = T{}
+    local maxlength = 0        -- For proper comment indenting
+    local keys = set.sort(table.keyset(t))
+    local val
+    for _, key in ipairs(keys) do
+        val = t[key]
+        if type(val) == 'table' and not (class(val) == 'List' or class(val) == 'Set') then
+            fragments:append('%s<%s>':format(indent, key))
+            if meta.comments[key] then
+                local c = '<!-- %s -->':format(meta.comments[key]:trim()):split('\n')
+                local pre = ''
+                for cstr in c:it() do
+                    fragments:append('%s%s%s':format(indent, pre, cstr:trim()))
+                    pre = '\t '
+                end
+            end
+            fragments:append(nest_xml(val, meta, indentlevel + 1))
+            fragments:append('%s</%s>':format(indent, key))
+
+        else
+            if class(val) == 'List' then
+                val = list.format(val, 'csv')
+            elseif class(val) == 'Set' then
+                val = set.format(val, 'csv')
+            elseif type(val) == 'table' then
+                val = table.format(val, 'csv')
+            elseif type(val) == 'string' and meta.cdata:contains(tostring(key):lower()) then
+                val = '<![CDATA[%s]]>':format(val)
+            else
+                val = tostring(val)
+            end
+
+            if val == '' then
+                fragments:append('%s<%s />':format(indent, key))
+            else
+                fragments:append('%s<%s>%s</%s>':format(indent, key, meta.cdata:contains(tostring(key):lower()) and val or val:xml_escape(), key))
+            end
+            local length = fragments:last():length() - indent:length()
+            if length > maxlength then
+                maxlength = length
+            end
+            inlines[fragments:length()] = key
+        end
+    end
+
+    for frag_key, key in pairs(inlines) do
+        if meta.comments[key] then
+            fragments[frag_key] = '%s%s<!-- %s -->':format(fragments[frag_key], ' ':rep(maxlength - fragments[frag_key]:trim():length() + 1), meta.comments[key])
+        end
+    end
+
+    return fragments:concat('\n')
 end
 
--- Resets all data. Always use when loading within a library.
-function config.reset()
-	config = T(config) or T{}
-	file = files.new()
-	original = T{['global'] = T{}}
-	chars = T{}
-	comments = T{}
+function config.register(settings, fn, ...)
+    local args = {...}
+    local key = tostring(args):sub(8)
+    settings_map[settings].refresh[key] = {fn=fn, args=args}
+    return key
 end
+
+function config.unregister(settings, key)
+    settings_map[settings].refresh[key] = nil
+end
+
+windower.register_event('load', 'logout', 'login', function()
+    for _, settings in settings_map:it() do
+        config.reload(settings)
+    end
+end)
 
 return config
+
+--[[
+Copyright © 2013-2015, Windower
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+    * Neither the name of Windower nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Windower BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+]]

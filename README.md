@@ -1,14 +1,14 @@
 Lua
 ===
 Lua Addons and Scripts  
-Lua documentation can be found at the Windower Development wiki: http://dev.windower.net/wiki/doku.php?id=dev:lua:start
+Lua documentation can be found at the Windower Development wiki: http://dev.windower.net/doku.php?id=lua:start
 
 Licensing
 ---------
-We require that all submissions to the Windower/Lua repository be licensed under the BSD license, reproduced below. To do this, simply place the license text in a comment at the top of each of your source files, and replace &lt;year&gt;, &lt;addon name&gt; and both instances of &lt;your name&gt; with appropriate values.
+We require that all submissions to the Windower/Lua repository be licensed under the BSD license, reproduced below. To do this, simply place the license text in a comment at the top of each of your source files, and replace `<year>`, `<addon name>` and both instances of `<your name>` with appropriate values.
 
 ```
-Copyright (c) <year>, <your name>
+Copyright © <year>, <your name>
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
